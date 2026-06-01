@@ -1,0 +1,12 @@
+DIP_proc/
+.vs/
+Debug/
+ipch/
+*.suo
+*.user
+*.ncb
+DIP/bin/Debug/DIP.pdb
+DIP/obj/
+
+!DIP/bin/Debug/DIP_proc.dll
+!DIP/DIP_proc.dll
