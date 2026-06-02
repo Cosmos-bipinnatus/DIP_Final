@@ -119,19 +119,17 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 
 ---
 
-## 4. Git 儲存庫提交指南 (GitHub Push Instructions)
+## 4. Git 儲存庫提交與團隊協作指南 (Git Push & Collaboration Instructions)
 
-由於 **C++ 演算法原始碼（`DIP_proc` 資料夾）屬於私有核心，不需要上傳至 GitHub 公開倉庫**，我們建議您透過配置 `.gitignore` 來排除 C++ 的原始碼，僅將前端 UI 原始碼與編譯出的 `DIP_proc.dll` 推送至倉庫，這也是業界保護演算法核心資產的標準做法。
+為便於團隊成員共同編輯與開發 C++ 影像處理演算法，本專案已將 **C++ DLL 原始碼（`DIP_proc` 目錄）納入 Git 版本控制與追蹤範圍**。
 
 ### 4.1 設定 .gitignore
-在專案根目錄的 `.gitignore` 中加入以下規則，以排除 C++ 原始碼與編譯快取，但保留發行所需的 DLL：
+我們在專案根目錄的 `.gitignore` 中配置了規則，保留 C++ 程式碼與專案檔，但排除了編譯產生的暫存檔與快取：
 ```text
-# 排除 C++ DLL 原始碼
-DIP_proc/
-
-# 排除 Visual Studio 快取與建置暫存檔
 .vs/
 Debug/
+Release/
+x64/
 ipch/
 *.suo
 *.user
@@ -139,30 +137,25 @@ ipch/
 DIP/bin/Debug/DIP.pdb
 DIP/obj/
 
-# 允許保留編譯完成的二進位依賴檔以利部署
+# 排除 C++ DLL 的編譯產物與暫存檔 (Exclude C++ DLL build output and temp files)
+DIP_proc/Debug/
+DIP_proc/Release/
+DIP_proc/x64/
+
 !DIP/bin/Debug/DIP_proc.dll
 !DIP/DIP_proc.dll
 ```
 
-### 4.2 提交並推送至 GitHub (GitHub Push)
-請在 PowerShell 中執行以下 Git 指令完成推送：
+### 4.2 提交並推送至 Git (Git Push)
+請在 PowerShell 中執行以下 Git 指令，將所有專案檔案（包含 C++ 原始碼與 C# 專案）提交並推送至共用遠端儲存庫：
 ```powershell
-# 初始化（若尚未建立 git 倉庫）
-git init
-
-# 將本說明文件、C# 原始碼以及 DLL 加至暫存區
-git add README.md
-git add PLAN.md
-git add DIP/
-git add "DIP VerB.sln"
-git add .gitignore
+# 將變更加入暫存區 (包含 C# 與 C++ 原始碼)
+git add .
 
 # 提交變更
-git commit -m "feat: 修正長方形影像載入 Bug, 實作灰階直方圖側邊欄與 UI 選單設計"
+git commit -m "feat: 整理 C++ 導出巨集為 dllexport 並納入 C++ 原始碼共用追蹤"
 
-# 推送至您的 GitHub 遠端倉庫
-# git remote add origin <您的GitHub倉庫連結>
-# git branch -M main
-# git push -u origin main
+# 推送至您的遠端倉庫 (以您的實際分支為準，例如 main)
+git push origin main
 ```
-這樣就能確保您的 GitHub 上擁有一份非常專業、解說詳盡的 README.md，同時完美隱藏了後端 C++ 演算法的原始碼，僅提供編譯好的 `DIP_proc.dll` 依賴！
+這樣就能確保團隊成員皆能拉取最新的 C++ 程式碼進行本機編譯與整合開發！

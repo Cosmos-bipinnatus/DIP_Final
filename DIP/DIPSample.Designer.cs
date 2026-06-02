@@ -67,13 +67,13 @@
             this.statusStrip1.Padding = new System.Windows.Forms.Padding(2, 0, 19, 0);
             this.statusStrip1.Size = new System.Drawing.Size(1023, 26);
             this.statusStrip1.TabIndex = 0;
-            this.statusStrip1.Text = "statusStrip1";
+            this.statusStrip1.Text = "狀態列";
             // 
             // stStripLabel
             // 
             this.stStripLabel.Name = "stStripLabel";
             this.stStripLabel.Size = new System.Drawing.Size(151, 20);
-            this.stStripLabel.Text = "toolStripStatusLabel1";
+            this.stStripLabel.Text = "就緒 (Ready)";
             // 
             // menuStrip1
             // 
@@ -92,7 +92,7 @@
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(5, 2, 0, 2);
             this.menuStrip1.Size = new System.Drawing.Size(1023, 28);
             this.menuStrip1.TabIndex = 1;
-            this.menuStrip1.Text = "menuStrip1";
+            this.menuStrip1.Text = "主選單";
             // 
             // fileToolStripMenuItem
             // 
@@ -100,14 +100,14 @@
             this.openToolStripMenuItem});
             this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             this.fileToolStripMenuItem.Size = new System.Drawing.Size(46, 24);
-            this.fileToolStripMenuItem.Text = "&File";
+            this.fileToolStripMenuItem.Text = "檔案 (File)";
             this.fileToolStripMenuItem.Click += new System.EventHandler(this.fileToolStripMenuItem_Click);
             // 
             // openToolStripMenuItem
             // 
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
             this.openToolStripMenuItem.Size = new System.Drawing.Size(128, 26);
-            this.openToolStripMenuItem.Text = "&Open";
+            this.openToolStripMenuItem.Text = "開啟 (Open)";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
             // oFileDlg
@@ -118,7 +118,7 @@
             // 
             this.rGBtoGrayToolStripMenuItem.Name = "rGBtoGrayToolStripMenuItem";
             this.rGBtoGrayToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.rGBtoGrayToolStripMenuItem.Text = "RGBtoGray";
+            this.rGBtoGrayToolStripMenuItem.Text = "彩色轉灰階 (RGB to Gray)";
             this.rGBtoGrayToolStripMenuItem.Click += new System.EventHandler(this.RGBtoGrayToolStripMenuItem_Click);
             // 
             // iPToolStripMenuItem
@@ -128,7 +128,7 @@
             this.bitPlanesToolStripMenuItem});
             iPToolStripMenuItem.Name = "iPToolStripMenuItem";
             iPToolStripMenuItem.Size = new System.Drawing.Size(35, 24);
-            iPToolStripMenuItem.Text = "&IP";
+            iPToolStripMenuItem.Text = "影像處理 (IP)";
             // 
             // histogramToolStripMenuItem
             // 
@@ -138,25 +138,25 @@
             this.histogramEqualizationLinearToolStripMenuItem});
             this.histogramToolStripMenuItem.Name = "histogramToolStripMenuItem";
             this.histogramToolStripMenuItem.Size = new System.Drawing.Size(93, 24);
-            this.histogramToolStripMenuItem.Text = "Histogram";
+            this.histogramToolStripMenuItem.Text = "直方圖 (Histogram)";
             // 
             // showHistogramToolStripMenuItem
             // 
             this.showHistogramToolStripMenuItem.Name = "showHistogramToolStripMenuItem";
             this.showHistogramToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.showHistogramToolStripMenuItem.Text = "Show_Histogram";
+            this.showHistogramToolStripMenuItem.Text = "顯示直方圖 (Show Histogram)";
             // 
             // histogramEqualizationGammaValueToolStripMenuItem
             // 
             this.histogramEqualizationGammaValueToolStripMenuItem.Name = "histogramEqualizationGammaValueToolStripMenuItem";
             this.histogramEqualizationGammaValueToolStripMenuItem.Size = new System.Drawing.Size(350, 26);
-            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Histogram Equalization(Gamma Value)";
+            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Gamma 冪律轉換 (Gamma Power-Law Transform)";
             // 
             // histogramEqualizationLinearToolStripMenuItem
             // 
             this.histogramEqualizationLinearToolStripMenuItem.Name = "histogramEqualizationLinearToolStripMenuItem";
             this.histogramEqualizationLinearToolStripMenuItem.Size = new System.Drawing.Size(350, 26);
-            this.histogramEqualizationLinearToolStripMenuItem.Text = "Histogram Equalization(Linear)";
+            this.histogramEqualizationLinearToolStripMenuItem.Text = "直方圖等化 (Linear)";
             // 
             // interpolationToolStripMenuItem
             // 
@@ -165,25 +165,25 @@
             this.bilinearInterpolationToolStripMenuItem});
             this.interpolationToolStripMenuItem.Name = "interpolationToolStripMenuItem";
             this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(109, 24);
-            this.interpolationToolStripMenuItem.Text = "Interpolation";
+            this.interpolationToolStripMenuItem.Text = "插值 (Interpolation)";
             // 
             // nearestNeighborInterpolationToolStripMenuItem
             // 
             this.nearestNeighborInterpolationToolStripMenuItem.Name = "nearestNeighborInterpolationToolStripMenuItem";
             this.nearestNeighborInterpolationToolStripMenuItem.Size = new System.Drawing.Size(300, 26);
-            this.nearestNeighborInterpolationToolStripMenuItem.Text = "Nearest Neighbor Interpolation";
+            this.nearestNeighborInterpolationToolStripMenuItem.Text = "最近鄰插值 (Nearest Neighbor)";
             // 
             // bilinearInterpolationToolStripMenuItem
             // 
             this.bilinearInterpolationToolStripMenuItem.Name = "bilinearInterpolationToolStripMenuItem";
             this.bilinearInterpolationToolStripMenuItem.Size = new System.Drawing.Size(300, 26);
-            this.bilinearInterpolationToolStripMenuItem.Text = "Bilinear Interpolation";
+            this.bilinearInterpolationToolStripMenuItem.Text = "雙線性插值 (Bilinear)";
             // 
             // rotationToolStripMenuItem
             // 
             this.rotationToolStripMenuItem.Name = "rotationToolStripMenuItem";
             this.rotationToolStripMenuItem.Size = new System.Drawing.Size(80, 24);
-            this.rotationToolStripMenuItem.Text = "Rotation";
+            this.rotationToolStripMenuItem.Text = "旋轉 (Rotation)";
             // 
             // segmentationToolStripMenuItem
             // 
@@ -191,19 +191,19 @@
             this.otsusMethodToolStripMenuItem});
             this.segmentationToolStripMenuItem.Name = "segmentationToolStripMenuItem";
             this.segmentationToolStripMenuItem.Size = new System.Drawing.Size(116, 24);
-            this.segmentationToolStripMenuItem.Text = "Segmentation";
+            this.segmentationToolStripMenuItem.Text = "影像分割 (Segmentation)";
             // 
             // otsusMethodToolStripMenuItem
             // 
             this.otsusMethodToolStripMenuItem.Name = "otsusMethodToolStripMenuItem";
             this.otsusMethodToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.otsusMethodToolStripMenuItem.Text = "Otsu’s Method";
+            this.otsusMethodToolStripMenuItem.Text = "大津法 (Otsu's Method)";
             // 
             // edgeDetectionToolStripMenuItem
             // 
             this.edgeDetectionToolStripMenuItem.Name = "edgeDetectionToolStripMenuItem";
             this.edgeDetectionToolStripMenuItem.Size = new System.Drawing.Size(126, 24);
-            this.edgeDetectionToolStripMenuItem.Text = "Edge Detection";
+            this.edgeDetectionToolStripMenuItem.Text = "邊緣偵測 (Edge Detection)";
             // 
             // neighborhoodProcessingToolStripMenuItem
             // 
@@ -212,25 +212,25 @@
             this.gaussianFiltersToolStripMenuItem});
             this.neighborhoodProcessingToolStripMenuItem.Name = "neighborhoodProcessingToolStripMenuItem";
             this.neighborhoodProcessingToolStripMenuItem.Size = new System.Drawing.Size(195, 24);
-            this.neighborhoodProcessingToolStripMenuItem.Text = "Neighborhood Processing";
+            this.neighborhoodProcessingToolStripMenuItem.Text = "鄰域處理 (Neighborhood Processing)";
             // 
             // bitPlanesToolStripMenuItem
             // 
             this.bitPlanesToolStripMenuItem.Name = "bitPlanesToolStripMenuItem";
             this.bitPlanesToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.bitPlanesToolStripMenuItem.Text = "Bit Planes";
+            this.bitPlanesToolStripMenuItem.Text = "位元平面 (Bit Planes)";
             // 
             // averagingFilterToolStripMenuItem
             // 
             this.averagingFilterToolStripMenuItem.Name = "averagingFilterToolStripMenuItem";
             this.averagingFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.averagingFilterToolStripMenuItem.Text = "Averaging Filter";
+            this.averagingFilterToolStripMenuItem.Text = "平均濾波 (Averaging Filter)";
             // 
             // gaussianFiltersToolStripMenuItem
             // 
             this.gaussianFiltersToolStripMenuItem.Name = "gaussianFiltersToolStripMenuItem";
             this.gaussianFiltersToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.gaussianFiltersToolStripMenuItem.Text = "Gaussian Filters";
+            this.gaussianFiltersToolStripMenuItem.Text = "高斯濾波 (Gaussian Filters)";
             // 
             // DIPSample
             // 
@@ -242,7 +242,7 @@
             this.MainMenuStrip = this.menuStrip1;
             this.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.Name = "DIPSample";
-            this.Text = "DIPSample";
+            this.Text = "數位影像處理 (DIP Sample)";
             this.Load += new System.EventHandler(this.DIPSample_Load);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();

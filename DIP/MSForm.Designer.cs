@@ -55,7 +55,7 @@
             this.MaximizeBox = false;
             this.Name = "MSForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
-            this.Text = "MSForm";
+            this.Text = "影像視窗 (Image View)";
             this.Load += new System.EventHandler(this.MSForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);

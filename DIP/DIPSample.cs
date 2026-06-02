@@ -76,7 +76,7 @@ namespace DIP
         {
             this.IsMdiContainer = true;
             this.WindowState = FormWindowState.Maximized;
-            this.stStripLabel.Text = "Ready";
+            this.stStripLabel.Text = "就緒 (Ready)";
 
             InitializeSidebar();
             RegisterEvents();
@@ -96,7 +96,7 @@ namespace DIP
             this.panelSidebar.Padding = new Padding(15);
 
             // lblSidebarTitle
-            this.lblSidebarTitle.Text = "Grayscale Histogram";
+            this.lblSidebarTitle.Text = "灰階直方圖 (Grayscale Histogram)";
             this.lblSidebarTitle.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             this.lblSidebarTitle.ForeColor = Color.White;
             this.lblSidebarTitle.Dock = DockStyle.Top;
@@ -113,7 +113,7 @@ namespace DIP
             this.lblStats.Font = new Font("Segoe UI", 9F);
             this.lblStats.ForeColor = Color.LightGray;
             this.lblStats.Padding = new Padding(0, 15, 0, 0);
-            this.lblStats.Text = "No active image";
+            this.lblStats.Text = "沒有作用中的影像 (No active image)";
 
             // Add controls to panelSidebar
             this.panelSidebar.Controls.Add(this.lblStats);
@@ -142,7 +142,7 @@ namespace DIP
             ToolStripMenuItem ipMenu = null;
             foreach (ToolStripItem item in this.menuStrip1.Items)
             {
-                if (item.Text == "&IP" || item.Name == "iPToolStripMenuItem")
+                if (item.Text == "影像處理 (IP)" || item.Name == "iPToolStripMenuItem")
                 {
                     ipMenu = item as ToolStripMenuItem;
                     break;
@@ -150,7 +150,7 @@ namespace DIP
             }
             if (ipMenu != null)
             {
-                ToolStripMenuItem btnBC = new ToolStripMenuItem("Brightness and Contrast");
+                ToolStripMenuItem btnBC = new ToolStripMenuItem("亮度與對比 (Brightness and Contrast)");
                 btnBC.Click += (s, e) => ApplyBrightnessContrast();
                 ipMenu.DropDownItems.Add(btnBC);
             }
@@ -158,15 +158,15 @@ namespace DIP
             // Dynamically add Laplacian, LoG, High Boost to Neighborhood menu
             if (this.neighborhoodProcessingToolStripMenuItem != null)
             {
-                ToolStripMenuItem btnLap = new ToolStripMenuItem("Laplacian Filter (8-Neighbors)");
+                ToolStripMenuItem btnLap = new ToolStripMenuItem("拉普拉斯濾波 (8-Neighbors)");
                 btnLap.Click += (s, e) => ApplyFilter(2);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnLap);
 
-                ToolStripMenuItem btnLog = new ToolStripMenuItem("Laplacian of Gaussian (LoG)");
+                ToolStripMenuItem btnLog = new ToolStripMenuItem("高斯-拉普拉斯 (LoG)");
                 btnLog.Click += (s, e) => ApplyFilter(3);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnLog);
 
-                ToolStripMenuItem btnHB = new ToolStripMenuItem("Unsharp Masking / High-Boost");
+                ToolStripMenuItem btnHB = new ToolStripMenuItem("反銳化遮罩 / 高提升 (Unsharp Masking / High-Boost)");
                 btnHB.Click += (s, e) => ApplyFilter(4);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnHB);
             }
@@ -174,20 +174,20 @@ namespace DIP
             // Dynamically add Sobel and Canny to Edge Detection menu
             if (this.edgeDetectionToolStripMenuItem != null)
             {
-                ToolStripMenuItem btnSobel = new ToolStripMenuItem("Sobel Operator");
+                ToolStripMenuItem btnSobel = new ToolStripMenuItem("Sobel 算子 (Sobel Operator)");
                 btnSobel.Click += (s, e) => ApplyEdge(0);
                 this.edgeDetectionToolStripMenuItem.DropDownItems.Add(btnSobel);
 
-                ToolStripMenuItem btnCanny = new ToolStripMenuItem("Canny Edge Detector");
+                ToolStripMenuItem btnCanny = new ToolStripMenuItem("Canny 邊緣偵測 (Canny Edge Detector)");
                 btnCanny.Click += (s, e) => ApplyEdge(1);
                 this.edgeDetectionToolStripMenuItem.DropDownItems.Add(btnCanny);
             }
 
             // Dynamically create a new top-level menu for Hough Line/Circle Detection!
-            ToolStripMenuItem houghMenu = new ToolStripMenuItem("Hough Detection");
-            ToolStripMenuItem btnHoughLine = new ToolStripMenuItem("Hough Line Detection");
+            ToolStripMenuItem houghMenu = new ToolStripMenuItem("霍夫偵測 (Hough Detection)");
+            ToolStripMenuItem btnHoughLine = new ToolStripMenuItem("霍夫直線偵測 (Hough Line Detection)");
             btnHoughLine.Click += (s, e) => ApplyHoughLine();
-            ToolStripMenuItem btnHoughCircle = new ToolStripMenuItem("Hough Circle Detection");
+            ToolStripMenuItem btnHoughCircle = new ToolStripMenuItem("霍夫圓形偵測 (Hough Circle Detection)");
             btnHoughCircle.Click += (s, e) => ApplyHoughCircle();
 
             houghMenu.DropDownItems.Add(btnHoughLine);
@@ -204,16 +204,16 @@ namespace DIP
             this.histogramEqualizationLinearToolStripMenuItem.Click += (s, e) => ApplyHistogramEqualization();
             // Gamma value equalisation trigger
             this.histogramEqualizationGammaValueToolStripMenuItem.Click += (s, e) => ApplyGammaCorrection();
-            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Gamma Power-Law Transform";
+            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Gamma 冪律轉換 (Gamma Power-Law Transform)";
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             oFileDlg.CheckFileExists = true;
             oFileDlg.CheckPathExists = true;
-            oFileDlg.Title = "Open File - DIP Sample";
+            oFileDlg.Title = "開啟檔案 (Open File) - DIP Sample";
             oFileDlg.ValidateNames = true;
-            oFileDlg.Filter = "bmp files (*.bmp)|*.bmp";
+            oFileDlg.Filter = "BMP 檔案 (*.bmp)|*.bmp";
             oFileDlg.FileName = "";
 
             if (oFileDlg.ShowDialog() == DialogResult.OK)
@@ -327,7 +327,7 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null || activeChild.pBitmap == null)
             {
-                lblStats.Text = "No active image";
+                lblStats.Text = "沒有作用中的影像 (No active image)";
                 Array.Clear(currentHistData, 0, 256);
                 picHistogram.Invalidate();
                 return;
@@ -373,13 +373,13 @@ namespace DIP
             }
 
             lblStats.Text = string.Format(
-                "Image Size: {0} x {1}\n" +
-                "Format: {2}\n" +
-                "Total Pixels: {3:N0}\n\n" +
-                "--- Statistics ---\n" +
-                "Mean Intensity: {4:F2}\n" +
-                "Median Intensity: {5}\n" +
-                "Std Deviation: {6:F2}",
+                "影像尺寸 (Image Size): {0} x {1}\n" +
+                "格式 (Format): {2}\n" +
+                "總像素 (Total Pixels): {3:N0}\n\n" +
+                "--- 統計 (Statistics) ---\n" +
+                "平均亮度 (Mean Intensity): {4:F2}\n" +
+                "中位亮度 (Median Intensity): {5}\n" +
+                "標準差 (Std Deviation): {6:F2}",
                 tempW, tempH, pf.ToString(), total, mean, median, stdDev
             );
 
@@ -483,7 +483,7 @@ namespace DIP
             }
 
             Bitmap grayBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(grayBmp, "Grayscale Image");
+            ShowNewImage(grayBmp, "灰階影像 (Grayscale Image)");
         }
 
         private void TriggerBitPlanes()
@@ -519,7 +519,7 @@ namespace DIP
                 bitPlaneSliceForm = new MSForm();
                 bitPlaneSliceForm.MdiParent = this;
                 bitPlaneSliceForm.pf1 = stStripLabel;
-                bitPlaneSliceForm.Text = "Bit-Plane Preview";
+                bitPlaneSliceForm.Text = "位元平面預覽 (Bit-Plane Preview)";
             }
 
             bitPlaneSliceForm.pBitmap = bitPlaneBmp;
@@ -555,7 +555,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("B&C (a={0:F1}, b={1})", alpha, beta));
+                ShowNewImage(newBmp, string.Format("亮度/對比 (B&C, a={0:F1}, b={1})", alpha, beta));
             }
         }
 
@@ -565,7 +565,7 @@ namespace DIP
             if (activeChild == null) return;
 
             int gammaVal = 10;
-            if (ParamDialog.ShowSliderDialog("Gamma Correction", "Enter Gamma scale (1 to 30, representing 0.1 to 3.0):", 1, 30, 10, out gammaVal))
+            if (ParamDialog.ShowSliderDialog("Gamma 校正 (Gamma Correction)", "輸入 Gamma 比例 (Enter Gamma scale, 1 to 30, representing 0.1 to 3.0):", 1, 30, 10, out gammaVal))
             {
                 double gamma = (double)gammaVal / 10.0;
                 Bitmap bmp = activeChild.pBitmap;
@@ -587,7 +587,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("Gamma Correction (g={0:F1})", gamma));
+                ShowNewImage(newBmp, string.Format("Gamma 校正 (Gamma Correction, g={0:F1})", gamma));
             }
         }
 
@@ -614,7 +614,7 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, "Histogram Equalized");
+            ShowNewImage(newBmp, "直方圖等化 (Histogram Equalized)");
         }
 
         private void ApplyFilter(int filterType)
@@ -641,19 +641,19 @@ namespace DIP
             {
                 kernel = new double[] { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
                 divisor = 9.0;
-                filterName = "Mean Filter 3x3";
+                filterName = "平均濾波 3x3 (Mean Filter)";
             }
             else if (filterType == 1) // Gaussian Filter 3x3
             {
                 kernel = new double[] { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
                 divisor = 16.0;
-                filterName = "Gaussian Filter 3x3";
+                filterName = "高斯濾波 3x3 (Gaussian Filter)";
             }
             else if (filterType == 2) // Laplacian Filter 3x3 (8-Neighbors)
             {
                 kernel = new double[] { -1, -1, -1, -1, 8, -1, -1, -1, -1 };
                 divisor = 1.0;
-                filterName = "Laplacian Sharpening";
+                filterName = "拉普拉斯銳化 (Laplacian Sharpening)";
             }
             else if (filterType == 3) // LoG Filter 5x5
             {
@@ -667,18 +667,18 @@ namespace DIP
                 kSize = 5;
                 divisor = 1.0;
                 offset = 128.0;
-                filterName = "LoG Filter 5x5";
+                filterName = "LoG 濾波 5x5 (LoG Filter)";
             }
             else if (filterType == 4) // High-Boost filter
             {
                 int weightVal = 12;
-                if (ParamDialog.ShowSliderDialog("High Boost Filter", "Enter scale A (10 to 30, representing 1.0 to 3.0):", 10, 30, 12, out weightVal))
+                if (ParamDialog.ShowSliderDialog("高提升濾波 (High-Boost Filter)", "輸入 A 係數 (Enter scale A, 10 to 30, representing 1.0 to 3.0):", 10, 30, 12, out weightVal))
                 {
                     double A = (double)weightVal / 10.0;
                     double center = 8.0 + (A - 1.0) * 9.0;
                     kernel = new double[] { -1, -1, -1, -1, center, -1, -1, -1, -1 };
                     divisor = 1.0;
-                    filterName = string.Format("High-Boost Filter (A={0:F1})", A);
+                    filterName = string.Format("高提升濾波 (High-Boost, A={0:F1})", A);
                 }
                 else return;
             }
@@ -701,7 +701,7 @@ namespace DIP
             if (activeChild == null) return;
 
             int scalePercent = 200;
-            if (ParamDialog.ShowSliderDialog("Image Scaling", "Enter scaling percentage (10% to 500%):", 10, 500, 200, out scalePercent))
+            if (ParamDialog.ShowSliderDialog("影像縮放 (Image Scaling)", "輸入縮放百分比 (Enter scaling percentage, 10% to 500%):", 10, 500, 200, out scalePercent))
             {
                 double scale = (double)scalePercent / 100.0;
                 Bitmap bmp = activeChild.pBitmap;
@@ -728,7 +728,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, newW, newH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("Scaled {0}% ({1})", scalePercent, mode == 0 ? "Nearest" : "Bilinear"));
+                ShowNewImage(newBmp, string.Format("縮放 {0}% ({1})", scalePercent, mode == 0 ? "最近鄰 (Nearest)" : "雙線性 (Bilinear)"));
             }
         }
 
@@ -767,7 +767,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, newW, newH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("Rotated {0}° ({1})", angle, mode == 0 ? "Nearest" : "Bilinear"));
+                ShowNewImage(newBmp, string.Format("旋轉 {0}° ({1})", angle, mode == 0 ? "最近鄰 (Nearest)" : "雙線性 (Bilinear)"));
             }
         }
 
@@ -794,7 +794,7 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, "Otsu Threshold Binarized");
+            ShowNewImage(newBmp, "大津法二值化 (Otsu Threshold Binarized)");
         }
 
         private void ApplyManualThreshold()
@@ -803,7 +803,7 @@ namespace DIP
             if (activeChild == null) return;
 
             int T = 128;
-            if (ParamDialog.ShowSliderDialog("Manual Threshold", "Enter threshold value (0 to 255):", 0, 255, 128, out T))
+            if (ParamDialog.ShowSliderDialog("手動門檻 (Manual Threshold)", "輸入門檻值 (Enter threshold value, 0 to 255):", 0, 255, 128, out T))
             {
                 Bitmap bmp = activeChild.pBitmap;
                 int tempW = bmp.Width;
@@ -823,7 +823,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, "Threshold Binarized (T=" + T + ")");
+                ShowNewImage(newBmp, "門檻二值化 (Threshold Binarized, T=" + T + ")");
             }
         }
 
@@ -851,7 +851,7 @@ namespace DIP
                         detect_sobel(f0, tempW, tempH, d, g0);
                     }
                 }
-                name = "Sobel Edges";
+                name = "Sobel 邊緣 (Sobel Edges)";
             }
             else if (mode == 1) // Canny
             {
@@ -866,7 +866,7 @@ namespace DIP
                             detect_canny(f0, tempW, tempH, d, g0, low, high);
                         }
                     }
-                    name = string.Format("Canny Edges (L={0:F0}, H={1:F0})", low, high);
+                    name = string.Format("Canny 邊緣 (Canny Edges, L={0:F0}, H={1:F0})", low, high);
                 }
                 else return;
             }
@@ -881,7 +881,7 @@ namespace DIP
             if (activeChild == null) return;
 
             int houghThresh = 50;
-            if (ParamDialog.ShowSliderDialog("Hough Line Detection", "Enter Accumulator Threshold (e.g. 20 to 150):", 5, 300, 50, out houghThresh))
+            if (ParamDialog.ShowSliderDialog("霍夫直線偵測 (Hough Line Detection)", "輸入累加器門檻 (Enter Accumulator Threshold, e.g. 20 to 150):", 5, 300, 50, out houghThresh))
             {
                 Bitmap bmp = activeChild.pBitmap;
                 int tempW = bmp.Width;
@@ -901,7 +901,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, "Hough Lines (Thresh=" + houghThresh + ")");
+                ShowNewImage(newBmp, "霍夫直線 (Hough Lines, Thresh=" + houghThresh + ")");
             }
         }
 
@@ -931,7 +931,7 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("Hough Circles (R:{0}-{1}, T={2})", rMin, rMax, thresh));
+                ShowNewImage(newBmp, string.Format("霍夫圓形 (Hough Circles, R:{0}-{1}, T={2})", rMin, rMax, thresh));
             }
         }
     }

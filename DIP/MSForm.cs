@@ -24,7 +24,7 @@ namespace DIP
         private void MSForm_Load(object sender, EventArgs e)
         {
             bmp_dip(pBitmap, pictureBox1);
-            pf1.Text = "(Width,Height)=(" + pBitmap.Width + "," + pBitmap.Height + ")";
+            pf1.Text = "尺寸 (Width, Height)=(" + pBitmap.Width + "," + pBitmap.Height + ")";
             w = pBitmap.Width;
             h = pBitmap.Height;
         }
@@ -55,8 +55,8 @@ namespace DIP
 
         private void bmp_write(Bitmap pBitmap, SaveFileDialog sFileDlg)
         {
-            sFileDlg.Filter = "Bitmap Image|*.bmp";
-            sFileDlg.Title = "Save an Image File";
+            sFileDlg.Filter = "BMP 影像 (Bitmap Image)|*.bmp";
+            sFileDlg.Title = "儲存影像檔案 (Save an Image File)";
             sFileDlg.ShowDialog();
             if (sFileDlg.FileName != "")
             {

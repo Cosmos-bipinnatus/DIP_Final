@@ -1,12 +1,18 @@
-DIP_proc/
 .vs/
 Debug/
+Release/
+x64/
 ipch/
 *.suo
 *.user
 *.ncb
 DIP/bin/Debug/DIP.pdb
 DIP/obj/
+
+# 排除 C++ DLL 的編譯產物與暫存檔 (Exclude C++ DLL build output and temp files)
+DIP_proc/Debug/
+DIP_proc/Release/
+DIP_proc/x64/
 
 !DIP/bin/Debug/DIP_proc.dll
 !DIP/DIP_proc.dll
