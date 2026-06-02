@@ -1,11 +1,11 @@
 #include "pch.h"
 
-#define DIPPROC_API extern "C" __declspec(dllexport)
-
 #define DIPPROC_UNUSED(x) UNREFERENCED_PARAMETER(x)
 
-// API Interface Specification stubs (no algorithm implementation)
-DIPPROC_API void encode_gray(int *f, int w, int h, int d, int *g) {
+// Export with C linkage using __declspec(dllexport) directly to prevent Name Mangling
+extern "C" {
+
+__declspec(dllexport) void encode_gray(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -13,9 +13,9 @@ DIPPROC_API void encode_gray(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(g);
 }
 
-DIPPROC_API void bit_plane_slice(int *f, int w, int h, int d, int *g,
-                                 int plane) {
-  // 建立位元遮罩 (例如 plane = 7 時，mask = 1 << plane = 128)
+__declspec(dllexport) void bit_plane_slice(int *f, int w, int h, int d, int *g,
+                                           int plane) {
+  // Establish bitmask (e.g., mask = 1 << plane)
   int mask = 1 << plane;
 
   for (int j = 0; j < h; j++) {
@@ -23,24 +23,24 @@ DIPPROC_API void bit_plane_slice(int *f, int w, int h, int d, int *g,
       int targetValue = 0;
 
       if (d == 1) {
-        // 1. 單通道（灰階圖）：直接取像素值
+        // 1. Single channel (grayscale): direct pixel value access
         int pixel = f[j * w + i];
 
-        // 進行位元 AND 運算，若為 1 則輸出 255，否則為 0
+        // Perform bitwise AND; if true, output 255, else 0
         targetValue = ((pixel & mask) != 0) ? 255 : 0;
         g[j * w + i] = targetValue;
       } else {
-        // 2. 多通道（RGB 彩色圖）：先以權重公式計算出灰階值
+        // 2. Multi-channel (RGB): calculate grayscale value using weights first
         double r = f[(j * w + i) * 3 + 2];
         double g_val = f[(j * w + i) * 3 + 1];
         double b = f[(j * w + i) * 3];
 
         int avg = (int)(b * 0.144 + g_val * 0.587 + r * 0.299);
 
-        // 進行位元 AND 運算，提取對應位元並二值化
+        // Perform bitwise AND and binarize
         targetValue = ((avg & mask) != 0) ? 255 : 0;
 
-        // 將結果填滿 R, G, B 三個通道，使其呈現黑白二值化效果
+        // Fill R, G, B channels with the target value
         for (int k = 0; k < 3; k++) {
           g[(j * w + i) * 3 + k] = targetValue;
         }
@@ -49,8 +49,8 @@ DIPPROC_API void bit_plane_slice(int *f, int w, int h, int d, int *g,
   }
 }
 
-DIPPROC_API void adjust_brightness_contrast(int *f, int w, int h, int d, int *g,
-                                            double alpha, int beta) {
+__declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h, int d, int *g,
+                                                      double alpha, int beta) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -60,8 +60,8 @@ DIPPROC_API void adjust_brightness_contrast(int *f, int w, int h, int d, int *g,
   DIPPROC_UNUSED(beta);
 }
 
-DIPPROC_API void calculate_histogram(int *f, int w, int h, int d,
-                                     int *histGray) {
+__declspec(dllexport) void calculate_histogram(int *f, int w, int h, int d,
+                                               int *histGray) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -69,7 +69,7 @@ DIPPROC_API void calculate_histogram(int *f, int w, int h, int d,
   DIPPROC_UNUSED(histGray);
 }
 
-DIPPROC_API void histogram_equalization(int *f, int w, int h, int d, int *g) {
+__declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -77,9 +77,9 @@ DIPPROC_API void histogram_equalization(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(g);
 }
 
-DIPPROC_API void spatial_filter(int *f, int w, int h, int d, int *g,
-                                double *kernel, int kSize, double divisor,
-                                double offset) {
+__declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g,
+                                          double *kernel, int kSize, double divisor,
+                                          double offset) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -91,8 +91,8 @@ DIPPROC_API void spatial_filter(int *f, int w, int h, int d, int *g,
   DIPPROC_UNUSED(offset);
 }
 
-DIPPROC_API void scale_image(int *f, int w, int h, int d, int *g, int newW,
-                             int newH, int mode) {
+__declspec(dllexport) void scale_image(int *f, int w, int h, int d, int *g, int newW,
+                                       int newH, int mode) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -103,8 +103,8 @@ DIPPROC_API void scale_image(int *f, int w, int h, int d, int *g, int newW,
   DIPPROC_UNUSED(mode);
 }
 
-DIPPROC_API void rotate_image(int *f, int w, int h, int d, int *g, int newW,
-                              int newH, double angle_deg, int mode) {
+__declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g, int newW,
+                                        int newH, double angle_deg, int mode) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -116,7 +116,7 @@ DIPPROC_API void rotate_image(int *f, int w, int h, int d, int *g, int newW,
   DIPPROC_UNUSED(mode);
 }
 
-DIPPROC_API void manual_threshold(int *f, int w, int h, int d, int *g, int T) {
+__declspec(dllexport) void manual_threshold(int *f, int w, int h, int d, int *g, int T) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -125,7 +125,7 @@ DIPPROC_API void manual_threshold(int *f, int w, int h, int d, int *g, int T) {
   DIPPROC_UNUSED(T);
 }
 
-DIPPROC_API void otsu_threshold(int *f, int w, int h, int d, int *g) {
+__declspec(dllexport) void otsu_threshold(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -133,7 +133,7 @@ DIPPROC_API void otsu_threshold(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(g);
 }
 
-DIPPROC_API void detect_sobel(int *f, int w, int h, int d, int *g) {
+__declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -141,8 +141,8 @@ DIPPROC_API void detect_sobel(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(g);
 }
 
-DIPPROC_API void detect_canny(int *f, int w, int h, int d, int *g,
-                              double lowThresh, double highThresh) {
+__declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
+                                        double lowThresh, double highThresh) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -152,8 +152,8 @@ DIPPROC_API void detect_canny(int *f, int w, int h, int d, int *g,
   DIPPROC_UNUSED(highThresh);
 }
 
-DIPPROC_API void detect_lines_hough(int *f, int w, int h, int d, int *g,
-                                    int houghThreshold) {
+__declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d, int *g,
+                                              int houghThreshold) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -162,8 +162,8 @@ DIPPROC_API void detect_lines_hough(int *f, int w, int h, int d, int *g,
   DIPPROC_UNUSED(houghThreshold);
 }
 
-DIPPROC_API void detect_circles_hough(int *f, int w, int h, int d, int *g,
-                                      int rMin, int rMax, int houghThreshold) {
+__declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d, int *g,
+                                                int rMin, int rMax, int houghThreshold) {
   DIPPROC_UNUSED(f);
   DIPPROC_UNUSED(w);
   DIPPROC_UNUSED(h);
@@ -172,4 +172,6 @@ DIPPROC_API void detect_circles_hough(int *f, int w, int h, int d, int *g,
   DIPPROC_UNUSED(rMin);
   DIPPROC_UNUSED(rMax);
   DIPPROC_UNUSED(houghThreshold);
+}
+
 }

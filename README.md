@@ -103,14 +103,19 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 在專案根目錄下啟動 PowerShell，執行以下指令完成完整方案編譯：
 ```powershell
 # 執行編譯（會自動清理並重新建置 C++ DLL 與 C# 執行檔）
-& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" "DIP VerB.sln" /t:Build /p:Configuration=Debug
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" "DIP VerB.sln" -restore /t:Build /p:Configuration=Debug /p:Platform=x86
 ```
+
+> [!TIP]
+> **本機無 .NET Framework 4.8 Targeting Pack 的解決方案**
+> 專案已整合 `Microsoft.NETFramework.ReferenceAssemblies` NuGet 套件，若您的本機電腦（或乾淨的 CI/CD、VS Code 等開發環境）未安裝 .NET 4.8 軟體開發套件，在建置時加上 `-restore` 參數，MSBuild 便會自動還原並下載所需的 4.8 API 宣告，確保無痛編譯成功。
+
 編譯成功後，產物如下：
-* **C++ DLL:** `DIP/bin/Debug/DIP_proc.dll`
-* **C# 執行檔:** `DIP/bin/Debug/DIP.exe`
+* **C++ DLL:** `DIP/bin/x86/Debug/DIP_proc.dll`
+* **C# 執行檔:** `DIP/bin/x86/Debug/DIP.exe`
 
 ### 3.2 功能測試流程 (Testing Flow)
-1. **啟動程式:** 執行 `DIP/bin/Debug/DIP.exe`。
+1. **啟動程式:** 執行 `DIP/bin/x86/Debug/DIP.exe`。
 2. **開啟影像:** 點擊選單 `File` -> `Open`，選擇任意長方形或正方形的 BMP 影像（如標準 Lena 或自訂長方形圖片）。
 3. **直方圖側邊欄驗證:** 影像開啟後，右側 Sidebar 應自動呈現精美的漸層灰階直方圖，並顯示對應的 **Mean**、**Median** 與 **Std Deviation** 統計數值。切換不同的圖片子視窗，直方圖應即時動態更新。
 4. **測試 Bit-Plane 滾動預覽:** 點擊 `IP` -> `Bit Planes`，在彈出的滑桿視窗中從 0 到 7 拖曳。左側預覽視窗應會**實時同步**呈現各個 bitplane 的二值化效果。
@@ -124,7 +129,7 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 為便於團隊成員共同編輯與開發 C++ 影像處理演算法，本專案已將 **C++ DLL 原始碼（`DIP_proc` 目錄）納入 Git 版本控制與追蹤範圍**。
 
 ### 4.1 設定 .gitignore
-我們在專案根目錄的 `.gitignore` 中配置了規則，保留 C++ 程式碼與專案檔，但排除了編譯產生的暫存檔與快取：
+我們在專案根目錄的 `.gitignore` 中配置了規則，保留 C++ 程式碼與專案檔，但排除了編譯產生的暫存檔與快取，同時忽略了 VS Code 私人的設定檔，以防干擾其他使用 Visual Studio 開發的成員：
 ```text
 .vs/
 Debug/
@@ -144,12 +149,15 @@ DIP_proc/x64/
 
 !DIP/bin/Debug/DIP_proc.dll
 !DIP/DIP_proc.dll
+
+# 排除 VS Code 工作區設定檔 (Exclude VS Code settings)
+.vscode/
 ```
 
 ### 4.2 提交並推送至 Git (Git Push)
 請在 PowerShell 中執行以下 Git 指令，將所有專案檔案（包含 C++ 原始碼與 C# 專案）提交並推送至共用遠端儲存庫：
 ```powershell
-# 將變更加入暫存區 (包含 C# 與 C++ 原始碼)
+# 將變更加入暫存區 (包含 C# 與 C++ 原始碼，不含 .vscode)
 git add .
 
 # 提交變更

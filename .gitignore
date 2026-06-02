@@ -16,3 +16,6 @@ DIP_proc/x64/
 
 !DIP/bin/Debug/DIP_proc.dll
 !DIP/DIP_proc.dll
+
+# 排除 VS Code 工作區設定檔 (Exclude VS Code settings)
+.vscode/

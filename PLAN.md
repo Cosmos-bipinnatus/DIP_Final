@@ -85,9 +85,11 @@ $$\text{位移到原點} \longrightarrow \text{矩陣旋轉} \longrightarrow \te
 
 ---
 
-## 4. 詳細函式結構與 API 介面定義 (API Specification)
-
 所有像素核心皆在 C++ DLL 中以 C 語言格式導出，以下為對應的介面與 C# `DllImport` 宣告。
+
+> [!IMPORTANT]
+> **C++ 導出語法規範 (Export Syntax Specification)**
+> 為了簡化開發與團隊協作，C++ 原始碼中**不使用**自訂的 `DIPPROC_API` 巨集或 `dllimport` 宣告。所有的 C++ 函式皆直接使用標準的 `__declspec(dllexport) void` 進行導出，並將所有導出函式包裹在 `extern "C" { ... }` 區塊中，以確保導出名稱為乾淨的 C 語言格式（防止名稱修飾 Name Mangling）。
 
 ### 4.1 影像轉灰階與位元切面 (Grayscale & Bit-Plane Slicing)
 * **C++ Signature:**
