@@ -6,11 +6,28 @@
 extern "C" {
 
 __declspec(dllexport) void encode_gray(int *f, int w, int h, int d, int *g) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
+  if(d==3){ // is BGR img
+    for(int y=0;y<h;y++){
+      for(int x=0;x<w;x++){
+        int idx = (y * w + x) * 3;
+        double b_val=f[idx+0];
+        double g_val=f[idx+1];
+        double r_val=f[idx+2];
+        int gray_val=(int)(r_val*0.299+g_val*0.587+b_val*0.114);
+        g[idx+0]=gray_val;
+        g[idx+1]=gray_val;
+        g[idx+2]=gray_val;
+      }
+    }
+  } 
+  else if(d==1){ //direct output
+    for(int y=0;y<h;y++){
+      for(int x=0;x<w;x++){
+        int idx = y * w + x;
+        g[idx] = f[idx];
+      }
+    }
+  }
 }
 
 __declspec(dllexport) void bit_plane_slice(int *f, int w, int h, int d, int *g,
@@ -61,13 +78,47 @@ __declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h, int 
 }
 
 __declspec(dllexport) void calculate_histogram(int *f, int w, int h, int d,
-                                               int *histGray) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(histGray);
+                                               int *histB, int *histG, int *histR) {
+  // Initialize histograms to 0
+  if (histB) {
+    for (int i = 0; i < 256; i++) histB[i] = 0;
+  }
+  if (histG) {
+    for (int i = 0; i < 256; i++) histG[i] = 0;
+  }
+  if (histR) {
+    for (int i = 0; i < 256; i++) histR[i] = 0;
+  }
+
+  if (d == 1) {
+    if (histB) {
+      for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+          int idx = y * w + x;
+          int val = f[idx];
+          if (val >= 0 && val <= 255) {
+            histB[val]++;
+          }
+        }
+      }
+    }
+  }
+  else if (d == 3) {
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        int idx = (y * w + x) * 3;
+        int b_val = f[idx + 0];
+        int g_val = f[idx + 1];
+        int r_val = f[idx + 2];
+
+        if (histB && b_val >= 0 && b_val <= 255) histB[b_val]++;
+        if (histG && g_val >= 0 && g_val <= 255) histG[g_val]++;
+        if (histR && r_val >= 0 && r_val <= 255) histR[r_val]++;
+      }
+    }
+  }
 }
+
 
 __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, int *g) {
   DIPPROC_UNUSED(f);

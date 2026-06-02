@@ -23,7 +23,7 @@ namespace DIP
         public static unsafe extern void adjust_brightness_contrast(int* f, int w, int h, int d, int* g, double alpha, int beta);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void calculate_histogram(int* f, int w, int h, int d, int* histGray);
+        public static unsafe extern void calculate_histogram(int* f, int w, int h, int d, int* histB, int* histG, int* histR);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void histogram_equalization(int* f, int w, int h, int d, int* g);
@@ -59,10 +59,14 @@ namespace DIP
         // Sidebar UI Elements and State variables
         // ==========================================
         private Panel panelSidebar;
-        private PictureBox picHistogram;
+        private PictureBox picHistB;
+        private PictureBox picHistG;
+        private PictureBox picHistR;
         private Label lblSidebarTitle;
         private Label lblStats;
-        private int[] currentHistData = new int[256];
+        private int[] currentHistDataB = new int[256];
+        private int[] currentHistDataG = new int[256];
+        private int[] currentHistDataR = new int[256];
 
         Bitmap NpBitmap;
         int w, h;
@@ -85,39 +89,57 @@ namespace DIP
         private void InitializeSidebar()
         {
             this.panelSidebar = new Panel();
-            this.picHistogram = new PictureBox();
+            this.picHistB = new PictureBox();
+            this.picHistG = new PictureBox();
+            this.picHistR = new PictureBox();
             this.lblSidebarTitle = new Label();
             this.lblStats = new Label();
 
-            // panelSidebar
+            // panelSidebar (Light system color)
             this.panelSidebar.Dock = DockStyle.Right;
             this.panelSidebar.Width = 280;
-            this.panelSidebar.BackColor = Color.FromArgb(30, 30, 35);
+            this.panelSidebar.BackColor = SystemColors.Control;
             this.panelSidebar.Padding = new Padding(15);
 
-            // lblSidebarTitle
+            // lblSidebarTitle (Dark text)
             this.lblSidebarTitle.Text = "灰階直方圖 (Grayscale Histogram)";
             this.lblSidebarTitle.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            this.lblSidebarTitle.ForeColor = Color.White;
+            this.lblSidebarTitle.ForeColor = Color.FromArgb(33, 37, 41);
             this.lblSidebarTitle.Dock = DockStyle.Top;
             this.lblSidebarTitle.Height = 35;
 
-            // picHistogram
-            this.picHistogram.Dock = DockStyle.Top;
-            this.picHistogram.Height = 200;
-            this.picHistogram.BackColor = Color.FromArgb(20, 20, 22);
-            this.picHistogram.Paint += new PaintEventHandler(picHistogram_Paint);
+            // picHistB (Blue / Grayscale)
+            this.picHistB.Dock = DockStyle.Top;
+            this.picHistB.Height = 200;
+            this.picHistB.BackColor = Color.White;
+            this.picHistB.Paint += new PaintEventHandler(picHistogram_Paint);
 
-            // lblStats
+            // picHistG (Green)
+            this.picHistG.Dock = DockStyle.Top;
+            this.picHistG.Height = 120;
+            this.picHistG.BackColor = Color.White;
+            this.picHistG.Visible = false;
+            this.picHistG.Paint += new PaintEventHandler(picHistogram_Paint);
+
+            // picHistR (Red)
+            this.picHistR.Dock = DockStyle.Top;
+            this.picHistR.Height = 120;
+            this.picHistR.BackColor = Color.White;
+            this.picHistR.Visible = false;
+            this.picHistR.Paint += new PaintEventHandler(picHistogram_Paint);
+
+            // lblStats (Dark text)
             this.lblStats.Dock = DockStyle.Fill;
             this.lblStats.Font = new Font("Segoe UI", 9F);
-            this.lblStats.ForeColor = Color.LightGray;
+            this.lblStats.ForeColor = Color.FromArgb(50, 50, 50);
             this.lblStats.Padding = new Padding(0, 15, 0, 0);
             this.lblStats.Text = "沒有作用中的影像 (No active image)";
 
-            // Add controls to panelSidebar
+            // Add controls to panelSidebar (reverse addition order for docking layout)
             this.panelSidebar.Controls.Add(this.lblStats);
-            this.panelSidebar.Controls.Add(this.picHistogram);
+            this.panelSidebar.Controls.Add(this.picHistR);
+            this.panelSidebar.Controls.Add(this.picHistG);
+            this.panelSidebar.Controls.Add(this.picHistB);
             this.panelSidebar.Controls.Add(this.lblSidebarTitle);
 
             // Add sidebar to form
@@ -328,8 +350,12 @@ namespace DIP
             if (activeChild == null || activeChild.pBitmap == null)
             {
                 lblStats.Text = "沒有作用中的影像 (No active image)";
-                Array.Clear(currentHistData, 0, 256);
-                picHistogram.Invalidate();
+                Array.Clear(currentHistDataB, 0, 256);
+                Array.Clear(currentHistDataG, 0, 256);
+                Array.Clear(currentHistDataR, 0, 256);
+                picHistB.Invalidate();
+                picHistG.Invalidate();
+                picHistR.Invalidate();
                 return;
             }
 
@@ -342,34 +368,107 @@ namespace DIP
 
             int[] f = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
 
-            int[] hist = new int[256];
-            unsafe
+            int[] histB = new int[256];
+            int[] histG = new int[256];
+            int[] histR = new int[256];
+
+            // Perform dynamic channel consistency check to verify if the 3 channels are identical (real grayscale)
+            bool isActuallyGray = (d == 1);
+            if (d == 3)
             {
-                fixed (int* f0 = f) fixed (int* h0 = hist)
+                isActuallyGray = true;
+                for (int i = 0; i < f.Length; i += 3)
                 {
-                    calculate_histogram(f0, tempW, tempH, d, h0);
+                    if (f[i] != f[i + 1] || f[i + 1] != f[i + 2])
+                    {
+                        isActuallyGray = false;
+                        break;
+                    }
                 }
             }
 
-            Array.Copy(hist, currentHistData, 256);
+            if (!isActuallyGray)
+            {
+                lblSidebarTitle.Text = "BGR 直方圖 (BGR Histograms)";
+                picHistB.Height = 120;
+                picHistG.Visible = true;
+                picHistR.Visible = true;
+            }
+            else
+            {
+                lblSidebarTitle.Text = "灰階直方圖 (Grayscale Histogram)";
+                picHistB.Height = 200;
+                picHistG.Visible = false;
+                picHistR.Visible = false;
+            }
 
-            // Statistics
+            unsafe
+            {
+                fixed (int* f0 = f) fixed (int* hB = histB) fixed (int* hG = histG) fixed (int* hR = histR)
+                {
+                    calculate_histogram(f0, tempW, tempH, d, hB, hG, hR);
+                }
+            }
+
+            Array.Copy(histB, currentHistDataB, 256);
+            Array.Copy(histG, currentHistDataG, 256);
+            Array.Copy(histR, currentHistDataR, 256);
+
+            // Statistics (exact grayscale representation)
             double sum = 0;
             long total = tempW * tempH;
-            for (int i = 0; i < 256; i++) sum += (double)hist[i] * i;
-            double mean = sum / total;
-
-            double varSum = 0;
-            for (int i = 0; i < 256; i++) varSum += (double)hist[i] * Math.Pow(i - mean, 2);
-            double stdDev = Math.Sqrt(varSum / total);
-
+            double mean = 0;
+            double stdDev = 0;
             int median = 127;
-            long cum = 0;
-            long half = total / 2;
-            for (int i = 0; i < 256; i++)
+
+            if (isActuallyGray)
             {
-                cum += hist[i];
-                if (cum >= half) { median = i; break; }
+                for (int i = 0; i < 256; i++) sum += (double)histB[i] * i;
+                mean = sum / total;
+
+                double varSum = 0;
+                for (int i = 0; i < 256; i++) varSum += (double)histB[i] * Math.Pow(i - mean, 2);
+                stdDev = Math.Sqrt(varSum / total);
+
+                long cum = 0;
+                long half = total / 2;
+                for (int i = 0; i < 256; i++)
+                {
+                    cum += histB[i];
+                    if (cum >= half) { median = i; break; }
+                }
+            }
+            else // d == 3 (Color BGR)
+            {
+                // Calculate grayscale values in C# to get accurate stats
+                int[] histY = new int[256];
+                for (int y = 0; y < tempH; y++)
+                {
+                    for (int x = 0; x < tempW; x++)
+                    {
+                        int idx = (y * tempW + x) * 3;
+                        int b = f[idx + 0];
+                        int g_val = f[idx + 1];
+                        int r = f[idx + 2];
+                        int gray = (int)(r * 0.299 + g_val * 0.587 + b * 0.114);
+                        if (gray >= 0 && gray <= 255) histY[gray]++;
+                    }
+                }
+
+                for (int i = 0; i < 256; i++) sum += (double)histY[i] * i;
+                mean = sum / total;
+
+                double varSum = 0;
+                for (int i = 0; i < 256; i++) varSum += (double)histY[i] * Math.Pow(i - mean, 2);
+                stdDev = Math.Sqrt(varSum / total);
+
+                long cum = 0;
+                long half = total / 2;
+                for (int i = 0; i < 256; i++)
+                {
+                    cum += histY[i];
+                    if (cum >= half) { median = i; break; }
+                }
             }
 
             lblStats.Text = string.Format(
@@ -383,33 +482,74 @@ namespace DIP
                 tempW, tempH, pf.ToString(), total, mean, median, stdDev
             );
 
-            picHistogram.Invalidate();
+            picHistB.Invalidate();
+            if (!isActuallyGray)
+            {
+                picHistG.Invalidate();
+                picHistR.Invalidate();
+            }
         }
 
         private void picHistogram_Paint(object sender, PaintEventArgs e)
         {
+            PictureBox pic = sender as PictureBox;
+            if (pic == null) return;
+
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            int width = picHistogram.Width;
-            int height = picHistogram.Height;
+            int width = pic.Width;
+            int height = pic.Height;
+
+            int[] data = null;
+            Color drawColor = Color.DimGray;
+            string channelName = "";
+
+            if (pic == picHistB)
+            {
+                data = currentHistDataB;
+                if (picHistG != null && picHistG.Visible)
+                {
+                    drawColor = Color.FromArgb(66, 165, 245); // Soft blue
+                    channelName = "Blue Channel";
+                }
+                else
+                {
+                    drawColor = Color.FromArgb(120, 120, 120); // Grayscale (neutral dark gray)
+                    channelName = "Grayscale";
+                }
+            }
+            else if (pic == picHistG)
+            {
+                data = currentHistDataG;
+                drawColor = Color.FromArgb(102, 187, 106); // Soft green
+                channelName = "Green Channel";
+            }
+            else if (pic == picHistR)
+            {
+                data = currentHistDataR;
+                drawColor = Color.FromArgb(239, 83, 80); // Soft red
+                channelName = "Red Channel";
+            }
 
             int maxVal = 0;
-            for (int i = 0; i < 256; i++)
+            if (data != null)
             {
-                if (currentHistData[i] > maxVal) maxVal = currentHistData[i];
+                for (int i = 0; i < 256; i++)
+                {
+                    if (data[i] > maxVal) maxVal = data[i];
+                }
             }
+
+            g.Clear(Color.White);
 
             if (maxVal == 0)
             {
-                g.Clear(Color.FromArgb(20, 20, 22));
                 return;
             }
 
-            g.Clear(Color.FromArgb(20, 20, 22));
-
-            // Grid lines
-            using (Pen gridPen = new Pen(Color.FromArgb(40, 40, 45), 1))
+            // Grid lines (light gray)
+            using (Pen gridPen = new Pen(Color.FromArgb(230, 230, 235), 1))
             {
                 for (int i = 1; i < 4; i++)
                 {
@@ -420,12 +560,8 @@ namespace DIP
                 }
             }
 
-            // Silver-blue dynamic gradient brush for modern UI look
-            using (System.Drawing.Drawing2D.LinearGradientBrush brush = new System.Drawing.Drawing2D.LinearGradientBrush(
-                new Rectangle(0, 0, width, height),
-                Color.FromArgb(100, 149, 237),
-                Color.FromArgb(30, 144, 255),
-                90F))
+            // Draw solid histogram curve/fill
+            using (SolidBrush brush = new SolidBrush(drawColor))
             {
                 System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
                 path.StartFigure();
@@ -434,7 +570,7 @@ namespace DIP
                 for (int i = 0; i < 256; i++)
                 {
                     float x = (float)i / 255 * (width - 2);
-                    float y = height - ((float)currentHistData[i] / maxVal * (height - 10));
+                    float y = height - ((float)data[i] / maxVal * (height - 10));
                     path.AddLine(x, y, x, y);
                 }
 
@@ -442,6 +578,13 @@ namespace DIP
                 path.CloseFigure();
 
                 g.FillPath(brush, path);
+            }
+
+            // Draw channel text indicator in the corner
+            using (Font textFont = new Font("Segoe UI", 9F, FontStyle.Bold))
+            using (Brush textBrush = new SolidBrush(Color.FromArgb(150, 60, 60, 60)))
+            {
+                g.DrawString(channelName, textFont, textBrush, new PointF(10, 8));
             }
         }
 
