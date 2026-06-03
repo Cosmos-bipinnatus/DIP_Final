@@ -97,8 +97,8 @@ $$\text{位移到原點} \longrightarrow \text{矩陣旋轉} \longrightarrow \te
   // 影像轉灰階 (標準加權平均公式: Y = 0.299R + 0.587G + 0.114B)
   __declspec(dllexport) void encode_gray(int* f, int w, int h, int d, int* g);
 
-  // 位元切面提取 (給定8bit灰階影像，滑桿動態選擇 plane 0~7)
-  __declspec(dllexport) void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane);
+  // 位元切面提取 (給定 8-bit 灰階影像，滑桿動態選擇 plane 0~7，支援原始權重與二值化放大雙模式)
+  __declspec(dllexport) void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane, int binarize);
   ```
 
 ### 4.2 亮度與對比調整 (Brightness & Contrast)
@@ -111,10 +111,10 @@ $$\text{位移到原點} \longrightarrow \text{矩陣旋轉} \longrightarrow \te
 ### 4.3 直方圖計算與等化 (Histogram & Equalization)
 * **C++ Signature:**
   ```cpp
-  // 計算灰階直方圖數據 (histGray大小為 256)
-  __declspec(dllexport) void calculate_histogram(int* f, int w, int h, int d, int* histGray);
+  // 計算直方圖數據 (支援 3 通道 BGR 獨立統計，單通道灰階時僅統計第一通道。B, G, R 直方圖陣列長度皆為 256)
+  __declspec(dllexport) void calculate_histogram(int* f, int w, int h, int d, int* histB, int* histG, int* histR);
 
-  // 灰階直方圖均衡化
+  // 直方圖等化 (支援單通道與 3 通道 BGR 的獨立 CDF 直方圖均衡化)
   __declspec(dllexport) void histogram_equalization(int* f, int w, int h, int d, int* g);
   ```
 
@@ -175,31 +175,27 @@ $$\text{位移到原點} \longrightarrow \text{矩陣旋轉} \longrightarrow \te
 
 ---
 
-## 5. C# 端 P/Invoke 完整宣告 (NativeMethods.cs)
+## 5. C# 端 P/Invoke 完整宣告 (DIP/DIPSample.cs)
 
-在 C# 專案中將建立 `NativeMethods.cs`，其宣告如下：
+在 C# 專案中，所有的 P/Invoke 宣告直接置於 `DIP/DIPSample.cs` 的頂部（而非原本設計的 `NativeMethods.cs`），以方便 MDI 主程式直接呼叫。其宣告如下：
 
 ```csharp
-using System;
-using System.Runtime.InteropServices;
-
-namespace DIP
-{
-    internal static class NativeMethods
-    {
+        // ==========================================
+        // C++ DLL P/Invoke Declarations
+        // ==========================================
         private const string DllName = "dip_proc.dll";
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void encode_gray(int* f, int w, int h, int d, int* g);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane);
+        public static unsafe extern void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane, int binarize);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void adjust_brightness_contrast(int* f, int w, int h, int d, int* g, double alpha, int beta);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void calculate_histogram(int* f, int w, int h, int d, int* histGray);
+        public static unsafe extern void calculate_histogram(int* f, int w, int h, int d, int* histB, int* histG, int* histR);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void histogram_equalization(int* f, int w, int h, int d, int* g);
@@ -230,6 +226,25 @@ namespace DIP
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void detect_circles_hough(int* f, int w, int h, int d, int* g, int rMin, int rMax, int houghThreshold);
-    }
-}
 ```
+
+---
+
+## 6. Standard Images 測試影像與演算法配對指南
+
+專案架構中的 `Standard Images` 資料夾包含豐富的影像資源（分布於 `ISample00`、`ISample01`、`ISample02` 中）。為了方便各演算法的開發與精確驗證，以下整理出最合適的測試影像對照表與測試目的：
+
+| 演算法功能 | 適合測試的影像類型 | 推薦的測試影像 | 測試目的 / 驗證目標 |
+| :--- | :--- | :--- | :--- |
+| **影像轉灰階** <br>(`encode_gray`) | 24-bit 彩色影像 (BGR) | `ISample02/RGB_iris.bmp` <br> `ISample02/Lena256_24bits.bmp` | 驗證三通道像素點能依 $Y = 0.299R + 0.587G + 0.114B$ 精準轉為灰階，且不發生溢位或偏色。 |
+| **位元平面切片** <br>(`bit_plane_slice`) | 8-bit 灰階影像（包含專門設計的位元測試圖） | `ISample02/Bitplanes.bmp` <br> `ISample02/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證 0~7 位元面的二值化/原始權重提取。`Bitplanes.bmp` 的色塊在特定 bit 會有規則的黑白條紋與區塊，是極佳的直觀測試圖。彩色圖應觸發 UI 攔截警示。 |
+| **亮度與對比調整** <br>(`adjust_brightness_contrast`) | 低對比度、亮度不均勻的影像，或曝光不足影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` | 測試 $\alpha$（對比）與 $\beta$（亮度）調整。特別是低對比度的月球和 pout 影像，能在此演算法調整後呈現更清晰的細節。 |
+| **直方圖計算與等化** <br>(`calculate_histogram`<br>`histogram_equalization`) | 直方圖分佈窄（低對比）的灰階或彩色影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證等化後能拉伸直方圖，使 CDF 分佈均勻。右側 Sidebar 在切換影像時應即時繪製對應通道之直方圖。 |
+| **空間濾波器** <br>(`spatial_filter`) | 1. 含噪影像 (椒鹽或高斯雜訊) <br> 2. 模糊或需銳化的影像 | **平滑/降噪：** `ISample01/Lena256_salt.bmp` (椒鹽雜訊), `ISample01/Pepper256.BMP` <br> **銳化/邊緣：** `ISample02/cameraman.bmp` | 驗證均值/高斯濾波器的去噪效果，以及拉普拉斯/LoG 核心的銳化邊緣提取。同時需驗證邊界處理為 Zero Padding，觀察影像邊緣是否會變黑或有平滑過渡。 |
+| **幾何縮放** <br>(`scale_image`) | 具有規律、高頻條紋或細緻輪廓的影像 | `ISample01/h.BMP` (水平) <br> `ISample01/v.BMP` (垂直) <br> `ISample01/d.BMP` (對角) <br> `ISample02/cameraman.bmp` | 比對「最近鄰插值」產生的鋸齒狀 (Aliasing) 效果與「雙線性插值」的平滑插值效果。 |
+| **幾何旋轉** <br>(`rotate_image`) | 具有格狀或條紋之影像，或具明顯方向性的影像 | `ISample01/h.BMP` <br> `ISample01/v.BMP` <br> `ISample01/d.BMP` <br> `ISample02/cameraman.bmp` | 驗證自動畫布擴展功能（影像旋轉不被切除），以及背景是否以黑色 (0) 補零填滿。同時比對兩種插值法的邊緣細緻度。 |
+| **閾值分割** <br>(`manual_threshold`<br>`otsu_threshold`) | 前景與背景有強烈對比且直方圖具雙峰特性的影像 | `ISample00/rice.bmp` (黑底白米) <br> `ISample00/bacteria.bmp` (細菌) <br> `ISample00/coins.tif` (硬幣) | 驗證手動閥值 $T$ 切割的效果，以及 Otsu 自動閥值演算法是否能精準找到黑白交界的最優閥值。 |
+| **邊緣檢測** <br>(`detect_sobel`<br>`detect_canny`) | 輪廓清晰、有漸進灰階變化的影像 | `ISample02/cameraman.bmp` <br> `ISample01/Lena256.bmp` | 觀察 Sobel 單純梯度計算產生的寬邊緣，與 Canny（非極大值抑制與雙閾值滯後追踪）產生的單像素極細邊緣之品質差異。 |
+| **霍夫直線檢測** <br>(`detect_lines_hough`) | 包含明顯直線、格線結構的影像 | `ISample01/h.BMP` <br> `ISample01/v.BMP` <br> `ISample01/d.BMP` <br> `ISample00/small-squares.bmp` | 驗證演算法是否能在參數空間 $(\rho, \theta)$ 正確投票，並在輸出圖中疊加繪製紅色直線。 |
+| **霍夫圓形檢測** <br>(`detect_circles_hough`) | 包含多個完整圓形或氣泡的影像 | `ISample00/bubbles.bmp` <br> `ISample00/circles.tif` <br> `ISample00/coins.tif` | 驗證 $(\alpha, \beta, r)$ 投票是否能準確標定圓心與半徑，並在影像中以紅色圓形圈出。 |
+

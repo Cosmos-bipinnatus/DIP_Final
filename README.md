@@ -64,7 +64,12 @@ $$\text{Index} = (y \times W + x) \times d + c$$
      * `int* histG`: 綠色通道的直方圖指標（長度 256，若為單通道可為空或不計算）。
      * `int* histR`: 紅色通道的直方圖指標（長度 256，若為單通道可為空或不計算）。
 2. **直方圖等化 (`histogram_equalization`)**
-   * **功能:** 計算影像的累計分佈函數 (CDF)，實現灰階影像直方圖均衡化。
+   * **功能:** 計算影像的累計分佈函數 (CDF)，實現單通道灰階與三通道 BGR 影像之直方圖均衡化。
+   * **參數:**
+     * `int* f`: 輸入影像一維像素陣列指標
+     * `int w`, `int h`: 影像寬度、高度
+     * `int d`: 深度通道數（`1` 或 `3`）
+     * `int* g`: 輸出等化後影像陣列指標
 
 ### 2.4 空間濾波器與邊界補零 (`spatial_filter`)
 * **功能:** 執行通用 2D 卷積空間濾波，邊界處理統一採用**補零邊界 (Zero Padding)**。
@@ -175,9 +180,29 @@ DIP_proc/x64/
 git add .
 
 # 提交變更
-git commit -m "feat: 整理 C++ 導出巨集為 dllexport 並納入 C++ 原始碼共用追蹤"
+git commit -m "docs: 更新專案架構、對接簽章與 Standard Images 演算法測試配對指南"
 
 # 推送至您的遠端倉庫 (以您的實際分支為準，例如 main)
 git push origin main
 ```
 這樣就能確保團隊成員皆能拉取最新的 C++ 程式碼進行本機編譯與整合開發！
+
+---
+
+## 5. Standard Images 測試影像與演算法配對指南
+
+專案架構中的 `Standard Images` 資料夾包含豐富的影像資源（分布於 `ISample00`、`ISample01`、`ISample02` 中）。為了方便各演算法的開發與精確驗證，以下整理出最合適的測試影像對照表與測試目的：
+
+| 演算法功能 | 適合測試的影像類型 | 推薦的測試影像 | 測試目的 / 驗證目標 |
+| :--- | :--- | :--- | :--- |
+| **影像轉灰階** <br>(`encode_gray`) | 24-bit 彩色影像 (BGR) | `ISample02/RGB_iris.bmp` <br> `ISample02/Lena256_24bits.bmp` | 驗證三通道像素點能依 $Y = 0.299R + 0.587G + 0.114B$ 精準轉為灰階，且不發生溢位或偏色。 |
+| **位元平面切片** <br>(`bit_plane_slice`) | 8-bit 灰階影像（包含專門設計的位元測試圖） | `ISample02/Bitplanes.bmp` <br> `ISample02/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證 0~7 位元面的二值化/原始權重提取。`Bitplanes.bmp` 的色塊在特定 bit 會有規則的黑白條紋與區塊，是極佳的直觀測試圖。彩色圖應觸發 UI 攔截警示。 |
+| **亮度與對比調整** <br>(`adjust_brightness_contrast`) | 低對比度、亮度不均勻的影像，或曝光不足影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` | 測試 $\alpha$（對比）與 $\beta$（亮度）調整。特別是低對比度的月球和 pout 影像，能在此演算法調整後呈現更清晰的細節。 |
+| **直方圖計算與等化** <br>(`calculate_histogram`<br>`histogram_equalization`) | 直方圖分佈窄（低對比）的灰階或彩色影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證等化後能拉伸直方圖，使 CDF 分佈均勻。右側 Sidebar 在切換影像時應即時繪製對應通道之直方圖。 |
+| **空間濾波器** <br>(`spatial_filter`) | 1. 含噪影像 (椒鹽或高斯雜訊) <br> 2. 模糊或需銳化的影像 | **平滑/降噪：** `ISample01/Lena256_salt.bmp` (椒鹽雜訊), `ISample01/Pepper256.BMP` <br> **銳化/邊緣：** `ISample02/cameraman.bmp` | 驗證均值/高斯濾波器的去噪效果，以及拉普拉斯/LoG 核心的銳化邊緣提取。同時需驗證邊界處理為 Zero Padding，觀察影像邊緣是否會變黑或有平滑過渡。 |
+| **幾何縮放** <br>(`scale_image`) | 具有規律、高頻條紋或細緻輪廓的影像 | `ISample01/h.BMP` (水平) <br> `ISample01/v.BMP` (垂直) <br> `ISample01/d.BMP` (對角) <br> `ISample02/cameraman.bmp` | 比對「最近鄰插值」產生的鋸齒狀 (Aliasing) 效果與「雙線性插值」的平滑插值效果。 |
+| **幾何旋轉** <br>(`rotate_image`) | 具有格狀或條紋之影像，或具明顯方向性的影像 | `ISample01/h.BMP` <br> `ISample01/v.BMP` <br> `ISample01/d.BMP` <br> `ISample02/cameraman.bmp` | 驗證自動畫布擴展功能（影像旋轉不被切除），以及背景是否以黑色 (0) 補零填滿。同時比對兩種插值法的邊緣細緻度。 |
+| **閾值分割** <br>(`manual_threshold`<br>`otsu_threshold`) | 前景與背景有強烈對比且直方圖具雙峰特性的影像 | `ISample00/rice.bmp` (黑底白米) <br> `ISample00/bacteria.bmp` (細菌) <br> `ISample00/coins.tif` (硬幣) | 驗證手動閥值 $T$ 切割的效果，以及 Otsu 自動閥值演算法是否能精準找到黑白交界的最優閥值。 |
+| **邊緣檢測** <br>(`detect_sobel`<br>`detect_canny`) | 輪廓清晰、有漸進灰階變化的影像 | `ISample02/cameraman.bmp` <br> `ISample01/Lena256.bmp` | 觀察 Sobel 單純梯度計算產生的寬邊緣，與 Canny（非極大值抑制與雙閾值滯後追踪）產生的單像素極細邊緣之品質差異。 |
+| **霍夫直線檢測** <br>(`detect_lines_hough`) | 包含明顯直線、格線結構的影像 | `ISample01/h.BMP` <br> `ISample01/v.BMP` <br> `ISample01/d.BMP` <br> `ISample00/small-squares.bmp` | 驗證演算法是否能在參數空間 $(\rho, \theta)$ 正確投票，並在輸出圖中疊加繪製紅色直線。 |
+| **霍夫圓形檢測** <br>(`detect_circles_hough`) | 包含多個完整圓形或氣泡的影像 | `ISample00/bubbles.bmp` <br> `ISample00/circles.tif` <br> `ISample00/coins.tif` | 驗證 $(\alpha, \beta, r)$ 投票是否能準確標定圓心與半徑，並在影像中以紅色圓形圈出。 |
