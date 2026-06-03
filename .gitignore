@@ -6,16 +6,26 @@ ipch/
 *.suo
 *.user
 *.ncb
-DIP/bin/Debug/DIP.pdb
+Thumbs.db
+
+# C# build output & intermediate (保留 DIP_proc.dll 供部署使用)
+DIP/bin/
 DIP/obj/
 
-# 排除 C++ DLL 的編譯產物與暫存檔 (Exclude C++ DLL build output and temp files)
+# C++ DLL build artifacts (排除編譯中間產物，僅保留根目錄 DIP_proc.dll)
 DIP_proc/Debug/
 DIP_proc/Release/
 DIP_proc/x64/
+DIP/DIP_proc.exp
+DIP/DIP_proc.lib
+DIP/DIP_proc.pdb
 
-!DIP/bin/Debug/DIP_proc.dll
+# 保留根目錄的 DIP_proc.dll（供 P/Invoke 載入使用）
 !DIP/DIP_proc.dll
 
 # 排除 VS Code 工作區設定檔 (Exclude VS Code settings)
 .vscode/
+
+# 排除已棄用的舊版表單檔案 (Deprecated legacy form files)
+DIP/BrightnessContrastForm.cs
+DIP/GammaCorrectionForm.cs

@@ -39,6 +39,23 @@ $$\text{Index} = (y \times W + x) \times d + c$$
    * $\alpha$: 對比度乘數 ($\alpha > 1$ 增加對比，$0 < \alpha < 1$ 降低對比)。
    * 先減去 $127.5$ 是將像素值平移到以中心灰階為零點，再進行 $\alpha$ 倍縮放，最後加回 $127.5$ 並加上亮度偏移 $\beta$，能達到最自然的對比度拉伸效果。
 
+### 2.1.1 整合式 UI 視窗 (`BrightnessContrastGammaForm`)
+原先分離的 `BrightnessContrastForm`（亮度與對比）與 `GammaCorrectionForm`（Gamma 校正）已合併為單一整合式 MDI 子視窗 `BrightnessContrastGammaForm`，提供以下特性：
+
+1. **線性 / 非線性雙模式切換**：透過 RadioButton 即時切換，顯示/隱藏對應的控制項群組。
+2. **線性模式 UI**：
+   * Alpha 對比度滑桿（0.1~3.0，1.0 居中映射 `trackBarAlpha` 0~200，中間點 100）。
+   * Beta 亮度滑桿（-255 ~ +255）。
+   * 等效 Gamma 動態算式推導：$\gamma_{eq} = -\log_2(0.5\alpha + \beta/255)$，含中間計算步驟顯示。
+   * 線性折線圖預覽（`picLinearCurve`），支援滑鼠點擊平移直線與拖曳增量調整 Alpha/Beta。
+3. **非線性 Gamma 冪律模式 UI**：
+   * Gamma 滑桿（0.1~10.0，1.0 居中映射 `trackBarGamma` 0~200，中間點 100）。分段線性映射：左半 [0.1, 1.0]，右半 [1.0, 10.0]。
+   * Gamma 冪律曲線預覽（`picGammaCurve`），支援滑鼠拖曳穿透控制 $\gamma = \ln(ny)/\ln(nx)$。
+4. **按鈕群組**：
+   * **「確定」**：輸出處理後 Bitmap 至新 MDI 子視窗。
+   * **「取消」**：關閉視窗不輸出。
+   * **「重置預設值」**：依當前模式重置所有參數至預設。
+
 ---
 
 ### 2.2 影像旋轉模式 (Image Rotation)

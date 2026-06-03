@@ -48,13 +48,18 @@ $$\text{Index} = (y \times W + x) \times d + c$$
      * **合併式 UI 視窗**: 將滑桿 TrackBar、二值化 CheckBox 與預覽 PictureBox 整合在同一個 `BitPlaneSliceForm` MDI 子視窗中，解決了原先視窗焦點被頻繁奪取導致無法拖曳滑桿的 Bug。
      * **實質灰階檢查 (ALERT 報錯)**: C# 前端點選時會先檢查影像內容是否為灰階。若為彩色影像（即 $d > 1$ 且存在 $R \neq G$ 或 $G \neq B$ 的像素），會彈出 MessageBox 報錯攔截；若為 $d == 1$ 或已經執行過 RGB 轉灰階（$d==3$ 但 $R=G=B$），則安全放行。
 
-### 2.2 亮度與對比度調整 (`adjust_brightness_contrast`)
-* **功能:** 調整影像明暗度與對比度。
+### 2.2 亮度對比與 Gamma 調整 (`adjust_brightness_contrast`)
+* **功能:** 整合式影像亮度、對比度與 Gamma 冪律校正調整。透過 `BrightnessContrastGammaForm` MDI 子視窗，提供線性/非線性雙模式即時預覽操作。
 * **參數:**
   * `double alpha`: 對比度係數（$\alpha > 1.0$ 增加對比；$0.0 < \alpha < 1.0$ 降低對比。若 $\alpha < 0.0$ 則觸發 **Gamma 冪律校正**，伽馬值為 $-\alpha$）。
   * `int beta`: 亮度偏移量（$\beta > 0$ 變亮；$\beta < 0$ 變暗）。
 * **核心對比度公式 (繞過 127.5 中心平移):**
   $$g(x,y) = clip\Big(\alpha \times \big(f(x,y) - 127.5\big) + 127.5 + \beta\Big)$$
+* **整合式 UI 特性 (`BrightnessContrastGammaForm`):**
+  * **線性模式**：Alpha 對比度（0.1~3.0，滑桿 1.0 居中）+ Beta 亮度（±255），含等效 Gamma 動態算式推導（$\gamma_{eq} = -\log_2(0.5\alpha + \beta/255)$）。
+  * **非線性 Gamma 冪律模式**：Gamma 範圍 0.1~10.0，滑桿預設 1.0 居中。分段線性映射：左半 [0.1, 1.0]，右半 [1.0, 10.0]。
+  * **曲線預覽圖互動操作**：線性模式點擊可平移直線，拖曳可調整 Alpha（水平）/ Beta（垂直）；非線性模式拖曳可讓 Gamma 曲線穿透滑鼠位置。
+  * **「確定」按鈕**：輸出處理後影像至新 MDI 子視窗；**「取消」按鈕**：關閉視窗不輸出；**「重置預設值」按鈕**：依模式重置所有參數。
 
 ### 2.3 直方圖計算與等化 (Histogram & Equalization)
 1. **統計直方圖數據 (`calculate_histogram`)**
@@ -138,8 +143,13 @@ $$\text{Index} = (y \times W + x) \times d + c$$
    * 側邊欄背景與所有彈出的互動式參數調校視窗（如亮度對比、位元平面滾動視窗等）均呈現一致的淺色主題。
    * 切換不同的圖片子視窗，直方圖與統計值應即時動態更新。
 4. **測試 Bit-Plane 滾動預覽:** 點擊 `IP` -> `Bit Planes`，在彈出的滑桿視窗中從 0 到 7 拖曳。左側預覽視窗應會**實時同步**呈現各個 bitplane 的二值化效果。
-5. **測試幾何旋轉:** 點擊 `Rotation`，設定角度為 $45$ 度，選擇 `Bilinear` 插值。系統應會建立一幅背景為黑色填滿、且影像四周完全沒有被切掉的旋轉後新影像。
-6. **測試霍夫線/圓偵測:** 點擊 `Hough Detection` 進行檢測，結果影像應會直接以紅色鮮明地圈出偵測到的直線與圓圈。
+5. **測試亮度對比與 Gamma 調整:** 在 `影像處理(IP)` 選單中點擊「亮度對比與 Gamma 調整 (線性與非線性)」：
+   * **線性模式**：拖曳 Alpha 滑桿（1.0 在中央）調整對比度，拖曳 Beta 滑桿調整亮度，觀察等效 Gamma 公式即時推導。
+   * **非線性模式**：切換 RadioButton 至 Gamma 冪律，拖曳 Gamma 滑桿（1.0 在中央，範圍 0.1~10.0）觀察冪律曲線變化。
+   * **曲線圖互動**：在右側曲線預覽圖中點擊/拖曳，驗證滑桿數值是否即時聯動。
+   * 點擊「確定」按鈕輸出至新視窗，或「取消」關閉不輸出。
+6. **測試幾何旋轉:** 點擊 `Rotation`，設定角度為 $45$ 度，選擇 `Bilinear` 插值。系統應會建立一幅背景為黑色填滿、且影像四周完全沒有被切掉的旋轉後新影像。
+7. **測試霍夫線/圓偵測:** 點擊 `Hough Detection` 進行檢測，結果影像應會直接以紅色鮮明地圈出偵測到的直線與圓圈。
 
 ---
 
@@ -148,7 +158,7 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 為便於團隊成員共同編輯與開發 C++ 影像處理演算法，本專案已將 **C++ DLL 原始碼（`DIP_proc` 目錄）納入 Git 版本控制與追蹤範圍**。
 
 ### 4.1 設定 .gitignore
-我們在專案根目錄的 `.gitignore` 中配置了規則，保留 C++ 程式碼與專案檔，但排除了編譯產生的暫存檔與快取，同時忽略了 VS Code 私人的設定檔，以防干擾其他使用 Visual Studio 開發的成員：
+我們在專案根目錄的 `.gitignore` 中配置了規則，保留 C++ 程式碼與專案檔，但排除了編譯產生的暫存檔與快取（含 `.exp`、`.lib`、`.pdb`、`Thumbs.db`、`bin/`、`obj/` 等），同時忽略了 VS Code 私人的設定檔，以防干擾其他使用 Visual Studio 開發的成員：
 ```text
 .vs/
 Debug/
@@ -158,19 +168,29 @@ ipch/
 *.suo
 *.user
 *.ncb
-DIP/bin/Debug/DIP.pdb
+Thumbs.db
+
+# C# build output & intermediate (保留 DIP_proc.dll 供部署使用)
+DIP/bin/
 DIP/obj/
 
-# 排除 C++ DLL 的編譯產物與暫存檔 (Exclude C++ DLL build output and temp files)
+# C++ DLL build artifacts (排除編譯中間產物，僅保留根目錄 DIP_proc.dll)
 DIP_proc/Debug/
 DIP_proc/Release/
 DIP_proc/x64/
+DIP/DIP_proc.exp
+DIP/DIP_proc.lib
+DIP/DIP_proc.pdb
 
-!DIP/bin/Debug/DIP_proc.dll
+# 保留根目錄的 DIP_proc.dll（供 P/Invoke 載入使用）
 !DIP/DIP_proc.dll
 
 # 排除 VS Code 工作區設定檔 (Exclude VS Code settings)
 .vscode/
+
+# 排除已棄用的舊版表單檔案 (Deprecated legacy form files)
+DIP/BrightnessContrastForm.cs
+DIP/GammaCorrectionForm.cs
 ```
 
 ### 4.2 提交並推送至 Git (Git Push)
@@ -180,7 +200,7 @@ DIP_proc/x64/
 git add .
 
 # 提交變更
-git commit -m "docs: 更新專案架構、對接簽章與 Standard Images 演算法測試配對指南"
+git commit -m "feat: 整合亮度對比與Gamma調整視窗 (BrightnessContrastGammaForm)"
 
 # 推送至您的遠端倉庫 (以您的實際分支為準，例如 main)
 git push origin main

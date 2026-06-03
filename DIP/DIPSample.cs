@@ -160,22 +160,7 @@ namespace DIP
             this.averagingFilterToolStripMenuItem.Click += (s, e) => ApplyFilter(0); // Mean
             this.gaussianFiltersToolStripMenuItem.Click += (s, e) => ApplyFilter(1); // Gaussian
 
-            // Dynamically find IP Menu and add Brightness & Contrast
-            ToolStripMenuItem ipMenu = null;
-            foreach (ToolStripItem item in this.menuStrip1.Items)
-            {
-                if (item.Text == "影像處理 (IP)" || item.Name == "iPToolStripMenuItem")
-                {
-                    ipMenu = item as ToolStripMenuItem;
-                    break;
-                }
-            }
-            if (ipMenu != null)
-            {
-                ToolStripMenuItem btnBC = new ToolStripMenuItem("亮度與對比 (Brightness and Contrast)");
-                btnBC.Click += (s, e) => ApplyBrightnessContrast();
-                ipMenu.DropDownItems.Add(btnBC);
-            }
+            // Neighborhood menu additions below
 
             // Dynamically add Laplacian, LoG, High Boost to Neighborhood menu
             if (this.neighborhoodProcessingToolStripMenuItem != null)
@@ -224,9 +209,9 @@ namespace DIP
 
             // Grayscale equalization
             this.histogramEqualizationLinearToolStripMenuItem.Click += (s, e) => ApplyHistogramEqualization();
-            // Gamma value equalisation trigger
-            this.histogramEqualizationGammaValueToolStripMenuItem.Click += (s, e) => ApplyGammaCorrection();
-            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Gamma 冪律轉換 (Gamma Power-Law Transform)";
+            // Combined Brightness, Contrast & Gamma transform (Linear & Non-Linear)
+            this.histogramEqualizationGammaValueToolStripMenuItem.Click += (s, e) => ApplyBrightnessContrastGamma();
+            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "亮度對比與 Gamma 調整 (線性與非線性)";
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -368,13 +353,9 @@ namespace DIP
             {
                 bmp = bpsForm.ProcessedBitmap;
             }
-            else if (activeChild is BrightnessContrastForm bcForm)
+            else if (activeChild is BrightnessContrastGammaForm bcgForm)
             {
-                bmp = bcForm.ProcessedBitmap;
-            }
-            else if (activeChild is GammaCorrectionForm gcForm)
-            {
-                bmp = gcForm.ProcessedBitmap;
+                bmp = bcgForm.ProcessedBitmap;
             }
 
             if (bmp == null)
@@ -620,7 +601,7 @@ namespace DIP
         // ==========================================
         // Event click handling helper methods
         // ==========================================
-        private void ShowNewImage(Bitmap bmp, string title)
+        internal void ShowNewImage(Bitmap bmp, string title)
         {
             MSForm childForm = new MSForm();
             childForm.MdiParent = this;
@@ -703,26 +684,15 @@ namespace DIP
             sliceForm.Show();
         }
 
-        private void ApplyBrightnessContrast()
+        private void ApplyBrightnessContrastGamma()
         {
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            BrightnessContrastForm bcForm = new BrightnessContrastForm(this, activeChild.pBitmap);
-            bcForm.pf1 = this.stStripLabel;
-            bcForm.MdiParent = this;
-            bcForm.Show();
-        }
-
-        private void ApplyGammaCorrection()
-        {
-            MSForm activeChild = this.ActiveMdiChild as MSForm;
-            if (activeChild == null) return;
-
-            GammaCorrectionForm gcForm = new GammaCorrectionForm(this, activeChild.pBitmap);
-            gcForm.pf1 = this.stStripLabel;
-            gcForm.MdiParent = this;
-            gcForm.Show();
+            BrightnessContrastGammaForm bcgForm = new BrightnessContrastGammaForm(this, activeChild.pBitmap);
+            bcgForm.pf1 = this.stStripLabel;
+            bcgForm.MdiParent = this;
+            bcgForm.Show();
         }
 
         private void ApplyHistogramEqualization()
