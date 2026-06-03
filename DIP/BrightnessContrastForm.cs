@@ -43,8 +43,8 @@ namespace DIP
         {
             this.Text = "亮度與對比調整預覽 (Brightness & Contrast)";
 
-            int initialWidth = Math.Max(originalBmp.Width, 490);
-            int initialHeight = originalBmp.Height + 175;
+            int initialWidth = Math.Max(originalBmp.Width, 480);
+            int initialHeight = originalBmp.Height + 160;
 
             this.ClientSize = new Size(initialWidth, initialHeight);
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
@@ -65,7 +65,7 @@ namespace DIP
             // 2. Bottom Panel
             panelBottom = new Panel
             {
-                Height = 175,
+                Height = 160,
                 Dock = DockStyle.Bottom,
                 BackColor = SystemColors.Control,
                 Padding = new Padding(10)
@@ -202,10 +202,10 @@ namespace DIP
 
             lblFormula = new Label
             {
-                Text = "運算式: y = 1.0 * x + 0\n等效 gamma: -log2(0.5 * 1.0 + 0/255.0) = 1.0",
+                Text = "運算式: y = 1.0 * x + 0 (等效 gamma = 1.0)",
                 Location = new Point(15, 125),
-                Size = new Size(460, 40),
-                Font = new Font("Segoe UI", 9.25F, FontStyle.Italic),
+                Size = new Size(400, 25),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Italic),
                 ForeColor = Color.DarkSlateGray
             };
 
@@ -260,21 +260,18 @@ namespace DIP
             if (lblFormula != null)
             {
                 double v = 0.5 * alpha + (double)beta / 255.0;
-                string processStr;
                 string gammaStr;
                 if (v > 0.0)
                 {
                     double eqGamma = -Math.Log(v) / Math.Log(2.0);
                     if (eqGamma < 0.05) eqGamma = 0.05;
                     gammaStr = string.Format("{0:F2}", eqGamma);
-                    processStr = string.Format("-log2(0.5 * {0:F1} + {1}/255.0) = -log2({2:F3})", alpha, beta, v);
                 }
                 else
                 {
                     gammaStr = "N/A (太暗)";
-                    processStr = string.Format("-log2(0.5 * {0:F1} + {1}/255.0) = -log2({2:F3})", alpha, beta, v);
                 }
-                lblFormula.Text = string.Format("運算式: y = {0:F1} * x + ({1})\n等效 gamma: {2} = {3}", alpha, beta, processStr, gammaStr);
+                lblFormula.Text = string.Format("運算式: y = {0:F1} * x + ({1})  (等效 gamma = {2})", alpha, beta, gammaStr);
             }
 
             mainForm.UpdateHistogram();

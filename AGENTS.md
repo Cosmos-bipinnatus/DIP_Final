@@ -72,4 +72,3 @@
 | **位元平面切片** | `bit_plane_slice` | 已實作 (Consolidated) | 整合式 MDI 預覽與控制項視窗，支援原始權重與二值化放大雙模式。支援實質灰階影像（如 `RGB to Gray` 轉換後之影像），對彩色影像進行 ALERT 攔截阻擋 |
 | **統計直方圖數據** | `calculate_histogram` | 已實作 | 支援 3 通道 (BGR) 獨立統計（單通道時僅統計第一通道）。數據由 C# 前端直方圖側邊欄（Sidebar）讀取並動態分層渲染。 |
 | **直方圖等化** | `histogram_equalization` | 已實作 | 支援單通道灰階與三通道 BGR 的獨立累計分佈函數 (CDF) 均衡化，對比度低之影像等化後可顯著增強細節。 |
-| **亮度與對比調整** | `adjust_brightness_contrast` | 已實作 | 支援線性對比與亮度調整，並整合非線性 Gamma 校正。提供 MDI 子視窗、動態曲線預覽、等效 Gamma 數學推導過程顯示，以及鎖定等效 Gamma 恆為 1.0 的滑桿雙向聯動機制。 |
