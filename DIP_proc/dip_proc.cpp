@@ -106,9 +106,9 @@ __declspec(dllexport) void calculate_histogram(int *f, int w, int h, int d,
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
           int idx = y * w + x;
-          int val = f[idx];
-          if (val >= 0 && val <= 255) {
-            histB[val]++;
+          int gray_val = f[idx];
+          if (gray_val >= 0 && gray_val <= 255) {
+            histB[gray_val]++;
           }
         }
       }
@@ -132,13 +132,66 @@ __declspec(dllexport) void calculate_histogram(int *f, int w, int h, int d,
   }
 }
 
-__declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d,
-                                                  int *g) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
+__declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, int *g) {
+  if((f!=nullptr)&&(w>0)&&(h>0)&&((d==1)||(d==3))){
+    int hist[3][256] = {0};
+    int lut[3][256] = {0};
+    int sum=0;
+    double scale_factor = 255.0/w*h;
+    if(d==1){
+      for(int y=0;y<h;y++){
+        for(int x=0;x<w;x++){
+          int idx=y*w+x;
+          int gray_val=f[idx];
+
+          hist[0][gray_val]++;  //Gray
+        }
+      }
+      for(int i=0;i<255;i++){
+        sum+=hist[0][i];
+        int val=(int)(sum*scale_factor+0.5);
+        if((val>=0)&&(val<=255))  { lut[0][i]=val; }
+      }
+      for(int y=0;y<h;y++){
+        for(int x=0;x<w;x++){
+          int idx=y*w+x;
+
+          g[idx]=lut[0][f[idx]];
+        }
+      }
+      
+    }
+    if(d==3){
+      for(int y=0;y<h;y++){
+        for(int x=0;x<w;x++){
+          int idx=(y*w+x)*3;
+          int b_val = f[idx + 0];
+          int g_val = f[idx + 1];
+          int r_val = f[idx + 2];
+
+          hist[0][b_val]++;  //B
+          hist[1][g_val]++;  //G
+          hist[2][r_val]++;  //R
+        }
+      }
+      for(int i=0;i<3;i++){
+        for(int j=0;j<255;j++){
+          sum+=hist[i][j];
+          int val=(int)(sum*scale_factor+0.5);
+          if((val>=0)&&(val<=255))  { lut[i][j]=val; }
+        }
+      }
+      for(int y=0;y<h;y++){
+        for(int x=0;x<w;x++){
+          int idx=(y*w+x)*3;
+
+          g[idx+0]=lut[0][f[idx+0]];  //B
+          g[idx+1]=lut[1][f[idx+1]];  //G
+          g[idx+2]=lut[2][f[idx+2]];  //R
+        }
+      }
+    }
+  }
 }
 
 __declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g,
