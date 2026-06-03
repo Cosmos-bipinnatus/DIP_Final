@@ -183,37 +183,7 @@ namespace DIP
             }
         }
 
-        // 5. Dynamic Bitplane Scrolling Form
-        public static void ShowBitPlaneSlider(DIPSample mainForm, Bitmap originalBmp)
-        {
-            Form form = new Form
-            {
-                Text = "位元平面切割檢視器 (Bit Plane Slicing Viewer)",
-                ClientSize = new Size(380, 140),
-                BackColor = SystemColors.Control,
-                ForeColor = Color.Black,
-                FormBorderStyle = FormBorderStyle.FixedToolWindow,
-                StartPosition = FormStartPosition.CenterParent,
-                Font = new Font("Segoe UI", 9F)
-            };
-
-            Label lbl = new Label { Text = "選擇位元平面 (Select Bit-Plane, 0 to 7):", Location = new Point(20, 20), AutoSize = true, ForeColor = Color.Black };
-            Label lblVal = new Label { Text = "7", Location = new Point(320, 45), Size = new Size(40, 20), ForeColor = Color.RoyalBlue, Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
-            TrackBar bar = new TrackBar { Minimum = 0, Maximum = 7, Value = 7, Location = new Point(20, 45), Size = new Size(290, 40), TickStyle = TickStyle.None };
-
-            bar.ValueChanged += (s, e) =>
-            {
-                lblVal.Text = bar.Value.ToString();
-                mainForm.ApplyBitPlaneSlice(originalBmp, bar.Value);
-            };
-
-            form.Controls.AddRange(new Control[] { lbl, lblVal, bar });
-
-            // Apply plane 7 initially
-            mainForm.ApplyBitPlaneSlice(originalBmp, 7);
-
-            form.Show();
-        }
+        // 5. Dynamic Bitplane Scrolling Form is now implemented via BitPlaneSliceForm class.
 
         // 6. Canny Threshold Settings Dialog
         public static bool ShowCannyDialog(out double low, out double high)

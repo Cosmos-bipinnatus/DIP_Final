@@ -17,7 +17,7 @@ namespace DIP
         public static unsafe extern void encode_gray(int* f, int w, int h, int d, int* g);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane);
+        public static unsafe extern void bit_plane_slice(int* f, int w, int h, int d, int* g, int plane, int binarize);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void adjust_brightness_contrast(int* f, int w, int h, int d, int* g, double alpha, int beta);
@@ -266,7 +266,7 @@ namespace DIP
         // ==========================================
         // Corrected Image conversions supporting Rectangular Images
         // ==========================================
-        private int[] dyn_bmp2array(Bitmap myBitmap, ref int ByteDepth, ref PixelFormat pixelFormat, ref ColorPalette palette)
+        internal int[] dyn_bmp2array(Bitmap myBitmap, ref int ByteDepth, ref PixelFormat pixelFormat, ref ColorPalette palette)
         {
             BitmapData byteArray = myBitmap.LockBits(new Rectangle(0, 0, myBitmap.Width, myBitmap.Height),
                                           ImageLockMode.ReadOnly,
@@ -301,7 +301,7 @@ namespace DIP
             return ImgData;
         }
 
-        private static Bitmap dyn_array2bmp(int[] ImgData, int Width, int Height, int ByteDepth, PixelFormat pixelFormat, ColorPalette palette)
+        internal static Bitmap dyn_array2bmp(int[] ImgData, int Width, int Height, int ByteDepth, PixelFormat pixelFormat, ColorPalette palette)
         {
             Bitmap myBitmap = new Bitmap(Width, Height, pixelFormat);
             BitmapData byteArray = myBitmap.LockBits(new Rectangle(0, 0, Width, Height),
@@ -629,46 +629,49 @@ namespace DIP
             ShowNewImage(grayBmp, "灰階影像 (Grayscale Image)");
         }
 
+        private bool IsImageActuallyGrayscale(Bitmap bmp)
+        {
+            if (bmp == null) return false;
+            int d = 0;
+            PixelFormat pf = new PixelFormat();
+            ColorPalette pal = null;
+            int[] f = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
+
+            if (d == 1) return true;
+            if (d == 3)
+            {
+                for (int i = 0; i < f.Length; i += 3)
+                {
+                    if (f[i] != f[i + 1] || f[i + 1] != f[i + 2])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
         private void TriggerBitPlanes()
         {
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
-            ParamDialog.ShowBitPlaneSlider(this, activeChild.pBitmap);
-        }
 
-        private MSForm bitPlaneSliceForm = null;
-        public void ApplyBitPlaneSlice(Bitmap originalBmp, int plane)
-        {
-            int tempW = originalBmp.Width;
-            int tempH = originalBmp.Height;
-            int d = 0;
-            PixelFormat pf = new PixelFormat();
-            ColorPalette pal = null;
-            int[] fArray = dyn_bmp2array(originalBmp, ref d, ref pf, ref pal);
-            int[] gArray = new int[tempW * tempH * d];
-
-            unsafe
+            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
             {
-                fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                {
-                    bit_plane_slice(f0, tempW, tempH, d, g0, plane);
-                }
+                MessageBox.Show(
+                    "位元平面切片功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
             }
 
-            Bitmap bitPlaneBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-
-            if (bitPlaneSliceForm == null || bitPlaneSliceForm.IsDisposed)
-            {
-                bitPlaneSliceForm = new MSForm();
-                bitPlaneSliceForm.MdiParent = this;
-                bitPlaneSliceForm.pf1 = stStripLabel;
-                bitPlaneSliceForm.Text = "位元平面預覽 (Bit-Plane Preview)";
-            }
-
-            bitPlaneSliceForm.pBitmap = bitPlaneBmp;
-            bitPlaneSliceForm.Show();
-            bitPlaneSliceForm.Invalidate();
-            UpdateHistogram();
+            BitPlaneSliceForm sliceForm = new BitPlaneSliceForm(this, activeChild.pBitmap);
+            sliceForm.pf1 = this.stStripLabel;
+            sliceForm.MdiParent = this;
+            sliceForm.Show();
         }
 
         private void ApplyBrightnessContrast()
