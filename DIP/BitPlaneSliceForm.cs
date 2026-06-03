@@ -11,6 +11,11 @@ namespace DIP
         private Bitmap originalBmp;
         private Bitmap processedBmp;
 
+        public Bitmap ProcessedBitmap
+        {
+            get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
+        }
+
         internal ToolStripStatusLabel pf1;
 
         private PictureBox pictureBox1;
@@ -188,7 +193,9 @@ namespace DIP
         {
             if (processedBmp != null)
             {
+                pictureBox1.Image = null;
                 processedBmp.Dispose();
+                processedBmp = null;
             }
             base.OnFormClosed(e);
             

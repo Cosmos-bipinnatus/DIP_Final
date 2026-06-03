@@ -346,8 +346,8 @@ namespace DIP
         {
             if (this.panelSidebar == null || !this.panelSidebar.Visible) return;
 
-            MSForm activeChild = this.ActiveMdiChild as MSForm;
-            if (activeChild == null || activeChild.pBitmap == null)
+            Form activeChild = this.ActiveMdiChild;
+            if (activeChild == null)
             {
                 lblStats.Text = "沒有作用中的影像 (No active image)";
                 Array.Clear(currentHistDataB, 0, 256);
@@ -359,7 +359,36 @@ namespace DIP
                 return;
             }
 
-            Bitmap bmp = activeChild.pBitmap;
+            Bitmap bmp = null;
+            if (activeChild is MSForm msForm)
+            {
+                bmp = msForm.pBitmap;
+            }
+            else if (activeChild is BitPlaneSliceForm bpsForm)
+            {
+                bmp = bpsForm.ProcessedBitmap;
+            }
+            else if (activeChild is BrightnessContrastForm bcForm)
+            {
+                bmp = bcForm.ProcessedBitmap;
+            }
+            else if (activeChild is GammaCorrectionForm gcForm)
+            {
+                bmp = gcForm.ProcessedBitmap;
+            }
+
+            if (bmp == null)
+            {
+                lblStats.Text = "沒有作用中的影像 (No active image)";
+                Array.Clear(currentHistDataB, 0, 256);
+                Array.Clear(currentHistDataG, 0, 256);
+                Array.Clear(currentHistDataR, 0, 256);
+                picHistB.Invalidate();
+                picHistG.Invalidate();
+                picHistR.Invalidate();
+                return;
+            }
+
             int tempW = bmp.Width;
             int tempH = bmp.Height;
             int d = 0;
@@ -679,30 +708,10 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            double alpha;
-            int beta;
-            if (ParamDialog.ShowBrightnessContrastDialog(out alpha, out beta))
-            {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        adjust_brightness_contrast(f0, tempW, tempH, d, g0, alpha, beta);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("亮度/對比 (B&C, a={0:F1}, b={1})", alpha, beta));
-            }
+            BrightnessContrastForm bcForm = new BrightnessContrastForm(this, activeChild.pBitmap);
+            bcForm.pf1 = this.stStripLabel;
+            bcForm.MdiParent = this;
+            bcForm.Show();
         }
 
         private void ApplyGammaCorrection()
@@ -710,31 +719,10 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            int gammaVal = 10;
-            if (ParamDialog.ShowSliderDialog("Gamma 校正 (Gamma Correction)", "輸入 Gamma 比例 (Enter Gamma scale, 1 to 30, representing 0.1 to 3.0):", 1, 30, 10, out gammaVal))
-            {
-                double gamma = (double)gammaVal / 10.0;
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        // Signal C++ to use Gamma by passing negative alpha
-                        adjust_brightness_contrast(f0, tempW, tempH, d, g0, -gamma, 0);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("Gamma 校正 (Gamma Correction, g={0:F1})", gamma));
-            }
+            GammaCorrectionForm gcForm = new GammaCorrectionForm(this, activeChild.pBitmap);
+            gcForm.pf1 = this.stStripLabel;
+            gcForm.MdiParent = this;
+            gcForm.Show();
         }
 
         private void ApplyHistogramEqualization()

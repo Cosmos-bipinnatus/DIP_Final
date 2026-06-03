@@ -97,6 +97,12 @@
     <Compile Include="BitPlaneSliceForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="BrightnessContrastForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GammaCorrectionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="ParamDialog.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -1,4 +1,4 @@
-﻿namespace DIP
+namespace DIP
 {
     partial class DIPSample
     {
@@ -125,7 +125,8 @@
             // 
             iPToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.rGBtoGrayToolStripMenuItem,
-            this.bitPlanesToolStripMenuItem});
+            this.bitPlanesToolStripMenuItem,
+            this.histogramEqualizationGammaValueToolStripMenuItem});
             iPToolStripMenuItem.Name = "iPToolStripMenuItem";
             iPToolStripMenuItem.Size = new System.Drawing.Size(35, 24);
             iPToolStripMenuItem.Text = "影像處理 (IP)";
@@ -134,7 +135,6 @@
             // 
             this.histogramToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.showHistogramToolStripMenuItem,
-            this.histogramEqualizationGammaValueToolStripMenuItem,
             this.histogramEqualizationLinearToolStripMenuItem});
             this.histogramToolStripMenuItem.Name = "histogramToolStripMenuItem";
             this.histogramToolStripMenuItem.Size = new System.Drawing.Size(93, 24);
