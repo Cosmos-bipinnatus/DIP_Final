@@ -105,8 +105,8 @@ namespace DIP
                 InitializeBgPanel();
                 ApplyInitialSettings();
 
-                int targetClientWidth = Math.Max(pBitmap.Width, 600);
-                int targetClientHeight = pBitmap.Height + 45;
+                int targetClientWidth = Math.Max(pBitmap.Width + 24, 600);
+                int targetClientHeight = pBitmap.Height + 45 + 24;
                 this.ClientSize = new Size(targetClientWidth, targetClientHeight);
                 this.MinimumSize = new Size(600, 150);
             }
@@ -378,8 +378,8 @@ namespace DIP
 
         private void bmp_dip(Bitmap pBitmap, PictureBox pictureBox1)
         {
-            this.Width = pBitmap.Width + (this.Width - this.ClientRectangle.Width);
-            this.Height = pBitmap.Height + (this.Height - this.ClientRectangle.Height);
+            this.Width = pBitmap.Width + 16 + (this.Width - this.ClientRectangle.Width);
+            this.Height = pBitmap.Height + 16 + (this.Height - this.ClientRectangle.Height);
             pictureBox1.Image = pBitmap;
             pictureBox1.Width = pBitmap.Width;
             pictureBox1.Height = pBitmap.Height;
@@ -415,15 +415,35 @@ namespace DIP
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-            try
-            {
-                Color pixel = pBitmap.GetPixel(e.X, e.Y);
-                pf1.Text = "(" + e.X + "," + e.Y + ")" +
-                            "=(" + pixel.R.ToString() + "," + pixel.G.ToString() + "," + pixel.B.ToString() + ")";
-            }
-            catch
-            {
+            if (pBitmap == null || pf1 == null) return;
 
+            int imgW = pBitmap.Width;
+            int imgH = pBitmap.Height;
+            int pbW = pictureBox1.Width;
+            int pbH = pictureBox1.Height;
+
+            int offsetX = (pbW - imgW) / 2;
+            int offsetY = (pbH - imgH) / 2;
+
+            int imgX = e.X - offsetX;
+            int imgY = e.Y - offsetY;
+
+            if (imgX >= 0 && imgX < imgW && imgY >= 0 && imgY < imgH)
+            {
+                try
+                {
+                    Color pixel = pBitmap.GetPixel(imgX, imgY);
+                    pf1.Text = "(" + imgX + "," + imgY + ")" +
+                                "=(" + pixel.R.ToString() + "," + pixel.G.ToString() + "," + pixel.B.ToString() + ")";
+                }
+                catch
+                {
+
+                }
+            }
+            else
+            {
+                pf1.Text = "尺寸 (Width, Height)=(" + imgW + "," + imgH + ")";
             }
         }
 
@@ -437,13 +457,13 @@ namespace DIP
                     int targetClientWidth, targetClientHeight;
                     if (panelBottomBg != null)
                     {
-                        targetClientWidth = Math.Max(pBitmap.Width, 600);
-                        targetClientHeight = pBitmap.Height + 45;
+                        targetClientWidth = Math.Max(pBitmap.Width + 24, 600);
+                        targetClientHeight = pBitmap.Height + 45 + 24;
                     }
                     else
                     {
-                        targetClientWidth = pBitmap.Width;
-                        targetClientHeight = pBitmap.Height;
+                        targetClientWidth = pBitmap.Width + 16;
+                        targetClientHeight = pBitmap.Height + 16;
                     }
                     this.ClientSize = new Size(targetClientWidth, targetClientHeight);
                 });
