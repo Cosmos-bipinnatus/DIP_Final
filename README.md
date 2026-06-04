@@ -148,6 +148,10 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 3. **霍夫直線檢測 (`detect_lines_hough`)**
    * **功能:** 邊緣化後進行參數空間 $(\rho, \theta)$ 累加投票，並直接在輸出影像上以 **顯眼紅色** 繪製疊加直線。
    * **參數:** `int houghThreshold` (投票閾值)。
+   * **UI 整合與相容性修復機制:**
+     * **整合式 UI 預覽視窗 (`HoughLineForm`)**: 採用「上方為影像預覽 PictureBox，下方為參數調整操作 Panel」設計，拖曳「累加器門檻」滑桿時，即時調用 C++ 演算法更新預覽並連動直方圖。
+     * **非對齊點陣圖格式安全轉換**: 針對 1bpp、4bpp 等非位元組對齊的點陣圖（如 `small-squares.bmp`），在 `dyn_bmp2array` 階段先自動轉換為標準的 `Format24bppRgb` 以計算正確 Stride，完全避免在 C++ 及 C# 處理時的記憶體越界與 Access Violation 崩潰。
+     * **實質灰階檢查**: 前端限制僅能處理實質灰階影像，對彩色影像進行 Alert 攔截警告。
 4. **霍夫圓形檢測 (`detect_circles_hough`)**
    * **功能:** 自動尋找圓形，並以 **紅色圓圈** 疊加標記。
    * **參數:** `int rMin`, `int rMax` (半徑範圍), `int houghThreshold` (投票閾值)。

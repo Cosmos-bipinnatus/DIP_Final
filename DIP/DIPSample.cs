@@ -86,8 +86,15 @@ namespace DIP
             this.WindowState = FormWindowState.Maximized;
             this.stStripLabel.Text = "就緒 (Ready)";
 
-            InitializeSidebar();
-            RegisterEvents();
+            try
+            {
+                InitializeSidebar();
+                RegisterEvents();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Exception during Form Load: " + ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void InitializeSidebar()
@@ -148,6 +155,11 @@ namespace DIP
 
             // Add sidebar to form
             this.Controls.Add(this.panelSidebar);
+
+            // Enforce correct docking layer order (Z-order) to prevent panelSidebar from overlapping menuStrip1 or statusStrip1
+            this.menuStrip1.SendToBack();
+            this.statusStrip1.SendToBack();
+            this.panelSidebar.BringToFront();
 
             // Hook MdiChildActivate to update histogram dynamically
             this.MdiChildActivate += new EventHandler(DIPSample_MdiChildActivate);
@@ -330,16 +342,32 @@ namespace DIP
         // ==========================================
         internal int[] dyn_bmp2array(Bitmap myBitmap, ref int ByteDepth, ref PixelFormat pixelFormat, ref ColorPalette palette)
         {
-            BitmapData byteArray = myBitmap.LockBits(new Rectangle(0, 0, myBitmap.Width, myBitmap.Height),
+            Bitmap tempBitmap = myBitmap;
+            bool converted = false;
+
+            // Check if pixel format is supported (must be 8bpp, 24bpp, or 32bpp)
+            if (myBitmap.PixelFormat != PixelFormat.Format8bppIndexed &&
+                myBitmap.PixelFormat != PixelFormat.Format24bppRgb &&
+                myBitmap.PixelFormat != PixelFormat.Format32bppArgb)
+            {
+                tempBitmap = new Bitmap(myBitmap.Width, myBitmap.Height, PixelFormat.Format24bppRgb);
+                using (Graphics g = Graphics.FromImage(tempBitmap))
+                {
+                    g.DrawImage(myBitmap, new Rectangle(0, 0, myBitmap.Width, myBitmap.Height));
+                }
+                converted = true;
+            }
+
+            BitmapData byteArray = tempBitmap.LockBits(new Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height),
                                           ImageLockMode.ReadOnly,
-                                          myBitmap.PixelFormat);
-            pixelFormat = myBitmap.PixelFormat;
-            palette = myBitmap.Palette;
-            ByteDepth = Image.GetPixelFormatSize(myBitmap.PixelFormat) / 8;
+                                          tempBitmap.PixelFormat);
+            pixelFormat = tempBitmap.PixelFormat;
+            palette = tempBitmap.Palette;
+            ByteDepth = Image.GetPixelFormatSize(tempBitmap.PixelFormat) / 8;
             if (ByteDepth < 1) ByteDepth = 1;
 
-            int Width = myBitmap.Width;
-            int Height = myBitmap.Height;
+            int Width = tempBitmap.Width;
+            int Height = tempBitmap.Height;
             int[] ImgData = new int[Width * Height * ByteDepth];
             int ByteOfSkip = byteArray.Stride - Width * ByteDepth;
 
@@ -359,7 +387,13 @@ namespace DIP
                     imgPtr += ByteOfSkip;
                 }
             }
-            myBitmap.UnlockBits(byteArray);
+            tempBitmap.UnlockBits(byteArray);
+
+            if (converted)
+            {
+                tempBitmap.Dispose();
+            }
+
             return ImgData;
         }
 
@@ -504,7 +538,10 @@ namespace DIP
             int[] mask = null;
             if (activeChild is RotateImageForm rotF)
             {
-                mask = rotF.BackgroundMask;
+                if (rotF.IsTransparentOrNotBlended())
+                {
+                    mask = rotF.BackgroundMask;
+                }
             }
 
             // Perform dynamic channel consistency check to verify if the 3 or 4 channels are identical (real grayscale)
@@ -1158,29 +1195,21 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            int houghThresh = 50;
-            if (ParamDialog.ShowSliderDialog("霍夫直線偵測 (Hough Line Detection)", "輸入累加器門檻 (Enter Accumulator Threshold, e.g. 20 to 150):", 5, 300, 50, out houghThresh))
+            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
             {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        detect_lines_hough(f0, tempW, tempH, d, g0, houghThresh);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, "霍夫直線 (Hough Lines, Thresh=" + houghThresh + ")");
+                MessageBox.Show(
+                    "霍夫直線偵測功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
             }
+
+            HoughLineForm hlForm = new HoughLineForm(this, activeChild.pBitmap);
+            hlForm.pf1 = this.stStripLabel;
+            hlForm.MdiParent = this;
+            hlForm.Show();
         }
 
         private void ApplyHoughCircle()
