@@ -108,8 +108,50 @@ namespace DIP
             this.Controls.Add(pictureBox1);
             this.Controls.Add(panelBottom);
 
+            InitializeContextMenu();
+
             // Double buffering to prevent flicker
             this.DoubleBuffered = true;
+        }
+
+        private void InitializeContextMenu()
+        {
+            ContextMenuStrip imageContextMenu = new ContextMenuStrip();
+
+            ToolStripMenuItem copyItem = new ToolStripMenuItem("複製圖片 (Copy Image)");
+            copyItem.Click += (s, e) => {
+                if (pictureBox1.Image != null)
+                {
+                    DIPSample.CopyImageToClipboard(pictureBox1.Image);
+                    MessageBox.Show("圖片已複製到剪貼簿 (Image copied to clipboard)", "訊息 (Info)", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            };
+            imageContextMenu.Items.Add(copyItem);
+
+            ToolStripMenuItem saveItem = new ToolStripMenuItem("另存圖片 (Save Image...)");
+            saveItem.Click += (s, e) => {
+                if (pictureBox1.Image != null)
+                {
+                    using (SaveFileDialog sfd = new SaveFileDialog())
+                    {
+                        sfd.Filter = "PNG 影像 (*.png)|*.png|BMP 影像 (*.bmp)|*.bmp|JPEG 影像 (*.jpg)|*.jpg";
+                        sfd.DefaultExt = "png";
+                        sfd.Title = "另存圖片 (Save Image)";
+                        if (sfd.ShowDialog() == DialogResult.OK)
+                        {
+                            ImageFormat format = ImageFormat.Png;
+                            string ext = System.IO.Path.GetExtension(sfd.FileName).ToLower();
+                            if (ext == ".bmp") format = ImageFormat.Bmp;
+                            else if (ext == ".jpg" || ext == ".jpeg") format = ImageFormat.Jpeg;
+                            
+                            pictureBox1.Image.Save(sfd.FileName, format);
+                        }
+                    }
+                }
+            };
+            imageContextMenu.Items.Add(saveItem);
+
+            pictureBox1.ContextMenuStrip = imageContextMenu;
         }
 
         private void UpdateSlice()

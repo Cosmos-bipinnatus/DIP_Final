@@ -35,7 +35,7 @@ namespace DIP
         public static unsafe extern void scale_image(int* f, int w, int h, int d, int* g, int newW, int newH, int mode);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void rotate_image(int* f, int w, int h, int d, int* g, int newW, int newH, double angle_deg, int mode);
+        public static unsafe extern void rotate_image(int* f, int w, int h, int d, int* g, int newW, int newH, double angle_deg, int mode, int bg_r, int bg_g, int bg_b, int bg_a);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void manual_threshold(int* f, int w, int h, int d, int* g, int T);
@@ -319,6 +319,40 @@ namespace DIP
             return myBitmap;
         }
 
+        private static Bitmap checkerBmp = null;
+        public static Bitmap GetCheckerboardBitmap()
+        {
+            if (checkerBmp == null)
+            {
+                checkerBmp = new Bitmap(16, 16);
+                using (Graphics g = Graphics.FromImage(checkerBmp))
+                {
+                    g.Clear(Color.White);
+                    using (SolidBrush grayBrush = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                    {
+                        g.FillRectangle(grayBrush, 0, 0, 8, 8);
+                        g.FillRectangle(grayBrush, 8, 8, 8, 8);
+                    }
+                }
+            }
+            return checkerBmp;
+        }
+
+        public static void CopyImageToClipboard(Image img)
+        {
+            if (img == null) return;
+            DataObject dataObject = new DataObject();
+            dataObject.SetData(DataFormats.Bitmap, true, img);
+            try
+            {
+                System.IO.MemoryStream ms = new System.IO.MemoryStream();
+                img.Save(ms, ImageFormat.Png);
+                dataObject.SetData("PNG", false, ms);
+            }
+            catch { }
+            Clipboard.SetDataObject(dataObject, true);
+        }
+
         // ==========================================
         // Sidebar Dynamic rendering
         // ==========================================
@@ -357,6 +391,10 @@ namespace DIP
             {
                 bmp = bcgForm.ProcessedBitmap;
             }
+            else if (activeChild is RotateImageForm rotForm)
+            {
+                bmp = rotForm.ProcessedBitmap;
+            }
 
             if (bmp == null)
             {
@@ -382,13 +420,20 @@ namespace DIP
             int[] histG = new int[256];
             int[] histR = new int[256];
 
-            // Perform dynamic channel consistency check to verify if the 3 channels are identical (real grayscale)
+            int[] mask = null;
+            if (activeChild is RotateImageForm rotF)
+            {
+                mask = rotF.BackgroundMask;
+            }
+
+            // Perform dynamic channel consistency check to verify if the 3 or 4 channels are identical (real grayscale)
             bool isActuallyGray = (d == 1);
-            if (d == 3)
+            if (d == 3 || d == 4)
             {
                 isActuallyGray = true;
-                for (int i = 0; i < f.Length; i += 3)
+                for (int i = 0; i < f.Length; i += d)
                 {
+                    if (d == 4 && f[i + 3] == 0) continue; // Skip transparent pixels in consistency check
                     if (f[i] != f[i + 1] || f[i + 1] != f[i + 2])
                     {
                         isActuallyGray = false;
@@ -412,11 +457,52 @@ namespace DIP
                 picHistR.Visible = false;
             }
 
-            unsafe
+            if (mask != null)
             {
-                fixed (int* f0 = f) fixed (int* hB = histB) fixed (int* hG = histG) fixed (int* hR = histR)
+                // Calculate histogram using mask in C# (to exclude rotated background)
+                if (d == 1)
                 {
-                    calculate_histogram(f0, tempW, tempH, d, hB, hG, hR);
+                    for (int i = 0; i < f.Length; i++)
+                    {
+                        if (i < mask.Length && mask[i] == 1)
+                        {
+                            int val = f[i];
+                            if (val >= 0 && val <= 255)
+                            {
+                                histB[val]++;
+                            }
+                        }
+                    }
+                    Array.Copy(histB, histG, 256);
+                    Array.Copy(histB, histR, 256);
+                }
+                else if (d == 3 || d == 4)
+                {
+                    for (int i = 0; i < f.Length; i += d)
+                    {
+                        int pixelIdx = i / d;
+                        if (pixelIdx < mask.Length && mask[pixelIdx] == 1)
+                        {
+                            if (d == 4 && f[i + 3] == 0) continue; // Skip transparent
+                            int b = f[i + 0];
+                            int g_val = f[i + 1];
+                            int r = f[i + 2];
+                            if (b >= 0 && b <= 255) histB[b]++;
+                            if (g_val >= 0 && g_val <= 255) histG[g_val]++;
+                            if (r >= 0 && r <= 255) histR[r]++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // General path: call C++ calculate_histogram
+                unsafe
+                {
+                    fixed (int* f0 = f) fixed (int* hB = histB) fixed (int* hG = histG) fixed (int* hR = histR)
+                    {
+                        calculate_histogram(f0, tempW, tempH, d, hB, hG, hR);
+                    }
                 }
             }
 
@@ -426,13 +512,18 @@ namespace DIP
 
             // Statistics (exact grayscale representation)
             double sum = 0;
-            long total = tempW * tempH;
+            long total = 0;
+
             double mean = 0;
             double stdDev = 0;
             int median = 127;
 
             if (isActuallyGray)
             {
+                total = 0;
+                for (int i = 0; i < 256; i++) total += histB[i];
+                if (total <= 0) total = 1;
+
                 for (int i = 0; i < 256; i++) sum += (double)histB[i] * i;
                 mean = sum / total;
 
@@ -448,22 +539,46 @@ namespace DIP
                     if (cum >= half) { median = i; break; }
                 }
             }
-            else // d == 3 (Color BGR)
+            else // Color BGR/ARGB
             {
                 // Calculate grayscale values in C# to get accurate stats
                 int[] histY = new int[256];
-                for (int y = 0; y < tempH; y++)
+                if (mask != null)
                 {
-                    for (int x = 0; x < tempW; x++)
+                    for (int i = 0; i < f.Length; i += d)
                     {
-                        int idx = (y * tempW + x) * 3;
-                        int b = f[idx + 0];
-                        int g_val = f[idx + 1];
-                        int r = f[idx + 2];
-                        int gray = (int)(r * 0.299 + g_val * 0.587 + b * 0.114);
-                        if (gray >= 0 && gray <= 255) histY[gray]++;
+                        int pixelIdx = i / d;
+                        if (pixelIdx < mask.Length && mask[pixelIdx] == 1)
+                        {
+                            if (d == 4 && f[i + 3] == 0) continue; // Skip transparent
+                            int b = f[i + 0];
+                            int g_val = f[i + 1];
+                            int r = f[i + 2];
+                            int gray = (int)(r * 0.299 + g_val * 0.587 + b * 0.114);
+                            if (gray >= 0 && gray <= 255) histY[gray]++;
+                        }
                     }
                 }
+                else
+                {
+                    for (int y = 0; y < tempH; y++)
+                    {
+                        for (int x = 0; x < tempW; x++)
+                        {
+                            int idx = (y * tempW + x) * d;
+                            if (d == 4 && f[idx + 3] == 0) continue; // Skip transparent
+                            int b = f[idx + 0];
+                            int g_val = f[idx + 1];
+                            int r = f[idx + 2];
+                            int gray = (int)(r * 0.299 + g_val * 0.587 + b * 0.114);
+                            if (gray >= 0 && gray <= 255) histY[gray]++;
+                        }
+                    }
+                }
+
+                total = 0;
+                for (int i = 0; i < 256; i++) total += histY[i];
+                if (total <= 0) total = 1;
 
                 for (int i = 0; i < 256; i++) sum += (double)histY[i] * i;
                 mean = sum / total;
@@ -498,6 +613,8 @@ namespace DIP
                 picHistG.Invalidate();
                 picHistR.Invalidate();
             }
+
+            // No Alpha histogram updating needed
         }
 
         private void picHistogram_Paint(object sender, PaintEventArgs e)
@@ -648,10 +765,11 @@ namespace DIP
             int[] f = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
 
             if (d == 1) return true;
-            if (d == 3)
+            if (d == 3 || d == 4)
             {
-                for (int i = 0; i < f.Length; i += 3)
+                for (int i = 0; i < f.Length; i += d)
                 {
+                    if (d == 4 && f[i + 3] == 0) continue; // Skip transparent pixels in consistency check
                     if (f[i] != f[i + 1] || f[i + 1] != f[i + 2])
                     {
                         return false;
@@ -841,38 +959,10 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            double angle;
-            int mode;
-            if (ParamDialog.ShowRotationDialog(out angle, out mode))
-            {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-
-                // Compute bounding box dimensions to prevent clipping
-                double rad = Math.Abs(angle * Math.PI / 180.0);
-                int newW = (int)Math.Ceiling(tempW * Math.Cos(rad) + tempH * Math.Sin(rad));
-                int newH = (int)Math.Ceiling(tempW * Math.Sin(rad) + tempH * Math.Cos(rad));
-                if (newW < 2) newW = 2;
-                if (newH < 2) newH = 2;
-
-                int[] gArray = new int[newW * newH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        rotate_image(f0, tempW, tempH, d, g0, newW, newH, angle, mode);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, newW, newH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("旋轉 {0}° ({1})", angle, mode == 0 ? "最近鄰 (Nearest)" : "雙線性 (Bilinear)"));
-            }
+            RotateImageForm rotForm = new RotateImageForm(this, activeChild.pBitmap);
+            rotForm.pf1 = this.stStripLabel;
+            rotForm.MdiParent = this;
+            rotForm.Show();
         }
 
         private void ApplyOtsu()

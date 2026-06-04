@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,10 +15,77 @@ namespace DIP
         internal Bitmap pBitmap;
         internal ToolStripStatusLabel pf1;
         int w, h;
+        private ContextMenuStrip imageContextMenu;
+
+        private Bitmap originalTransparentBmp;
+        private int medianB = 128;
+        private int medianG = 128;
+        private int medianR = 128;
+        private Color customBgColor = Color.FromArgb(240, 240, 240);
+
+        internal bool isRotatedOutput = false;
+        internal bool initialBlend = false;
+        internal string initialBgType = "Transparent";
+        internal Color initialCustomColor = Color.FromArgb(240, 240, 240);
+
+        private Panel panelBottomBg;
+        private RadioButton radioBgTransparent;
+        private RadioButton radioBgBlack;
+        private RadioButton radioBgWhite;
+        private RadioButton radioBgGray;
+        private RadioButton radioBgCustom;
+        private Panel panelCustomColorPreview;
+        private CheckBox chkBlendBg;
 
         public MSForm()
         {
             InitializeComponent();
+        }
+
+        private void InitializeContextMenu()
+        {
+            imageContextMenu = new ContextMenuStrip();
+
+            ToolStripMenuItem copyItem = new ToolStripMenuItem("複製圖片 (Copy Image)");
+            copyItem.Click += CopyItem_Click;
+            imageContextMenu.Items.Add(copyItem);
+
+            ToolStripMenuItem saveItem = new ToolStripMenuItem("另存圖片 (Save Image...)");
+            saveItem.Click += SaveItem_Click;
+            imageContextMenu.Items.Add(saveItem);
+
+            pictureBox1.ContextMenuStrip = imageContextMenu;
+        }
+
+        private void CopyItem_Click(object sender, EventArgs e)
+        {
+            if (pictureBox1.Image != null)
+            {
+                DIPSample.CopyImageToClipboard(pictureBox1.Image);
+                MessageBox.Show("圖片已複製到剪貼簿 (Image copied to clipboard)", "訊息 (Info)", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void SaveItem_Click(object sender, EventArgs e)
+        {
+            if (pictureBox1.Image != null)
+            {
+                using (SaveFileDialog sfd = new SaveFileDialog())
+                {
+                    sfd.Filter = "PNG 影像 (*.png)|*.png|BMP 影像 (*.bmp)|*.bmp|JPEG 影像 (*.jpg)|*.jpg";
+                    sfd.DefaultExt = "png";
+                    sfd.Title = "另存圖片 (Save Image)";
+                    if (sfd.ShowDialog() == DialogResult.OK)
+                    {
+                        ImageFormat format = ImageFormat.Png;
+                        string ext = System.IO.Path.GetExtension(sfd.FileName).ToLower();
+                        if (ext == ".bmp") format = ImageFormat.Bmp;
+                        else if (ext == ".jpg" || ext == ".jpeg") format = ImageFormat.Jpeg;
+                        
+                        pictureBox1.Image.Save(sfd.FileName, format);
+                    }
+                }
+            }
         }
 
         private void MSForm_Load(object sender, EventArgs e)
@@ -27,6 +94,276 @@ namespace DIP
             pf1.Text = "尺寸 (Width, Height)=(" + pBitmap.Width + "," + pBitmap.Height + ")";
             w = pBitmap.Width;
             h = pBitmap.Height;
+
+            if (pBitmap.PixelFormat == PixelFormat.Format32bppArgb || isRotatedOutput)
+            {
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.MaximizeBox = true;
+
+                originalTransparentBmp = (Bitmap)pBitmap.Clone();
+                CalculateOriginalMedians();
+                InitializeBgPanel();
+                ApplyInitialSettings();
+
+                int targetClientWidth = Math.Max(pBitmap.Width, 600);
+                int targetClientHeight = pBitmap.Height + 45;
+                this.ClientSize = new Size(targetClientWidth, targetClientHeight);
+                this.MinimumSize = new Size(600, 150);
+            }
+
+            InitializeContextMenu();
+        }
+
+        private void ApplyInitialSettings()
+        {
+            customBgColor = initialCustomColor;
+            panelCustomColorPreview.BackColor = customBgColor;
+
+            chkBlendBg.Checked = initialBlend;
+
+            if (initialBgType == "Transparent") radioBgTransparent.Checked = true;
+            else if (initialBgType == "Black") radioBgBlack.Checked = true;
+            else if (initialBgType == "White") radioBgWhite.Checked = true;
+            else if (initialBgType == "Gray") radioBgGray.Checked = true;
+            else if (initialBgType == "Custom") radioBgCustom.Checked = true;
+        }
+
+        private void CalculateOriginalMedians()
+        {
+            if (pBitmap == null) return;
+            DIPSample mainForm = this.MdiParent as DIPSample;
+            if (mainForm == null) return;
+
+            int d = 0;
+            PixelFormat pf = new PixelFormat();
+            ColorPalette pal = null;
+            int[] f = mainForm.dyn_bmp2array(pBitmap, ref d, ref pf, ref pal);
+
+            int[] histB = new int[256];
+            int[] histG = new int[256];
+            int[] histR = new int[256];
+
+            if (d == 1)
+            {
+                for (int i = 0; i < f.Length; i++)
+                {
+                    int val = f[i];
+                    if (val >= 0 && val <= 255) histB[val]++;
+                }
+                Array.Copy(histB, histG, 256);
+                Array.Copy(histB, histR, 256);
+            }
+            else if (d == 3 || d == 4)
+            {
+                for (int i = 0; i < f.Length; i += d)
+                {
+                    if (d == 4 && f[i + 3] == 0) continue; // Skip transparent pixels in median calculation
+                    int b = f[i + 0];
+                    int g_val = f[i + 1];
+                    int r = f[i + 2];
+                    if (b >= 0 && b <= 255) histB[b]++;
+                    if (g_val >= 0 && g_val <= 255) histG[g_val]++;
+                    if (r >= 0 && r <= 255) histR[r]++;
+                }
+            }
+
+            medianB = GetMedianFromHist(histB);
+            medianG = GetMedianFromHist(histG);
+            medianR = GetMedianFromHist(histR);
+        }
+
+        private int GetMedianFromHist(int[] hist)
+        {
+            long total = 0;
+            for (int i = 0; i < 256; i++) total += hist[i];
+            if (total <= 0) return 128;
+            long cum = 0;
+            long half = total / 2;
+            for (int i = 0; i < 256; i++)
+            {
+                cum += hist[i];
+                if (cum >= half) return i;
+            }
+            return 128;
+        }
+
+        private void InitializeBgPanel()
+        {
+            panelBottomBg = new Panel
+            {
+                Height = 45,
+                Dock = DockStyle.Bottom,
+                BackColor = SystemColors.Control,
+                Padding = new Padding(5)
+            };
+
+            Label lblBg = new Label
+            {
+                Text = "背景預覽 (Background):",
+                Location = new Point(10, 12),
+                Size = new Size(130, 20),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+            };
+
+            radioBgTransparent = new RadioButton
+            {
+                Text = "透明",
+                Location = new Point(145, 10),
+                Size = new Size(55, 24),
+                Checked = true
+            };
+            radioBgTransparent.CheckedChanged += RadioBg_CheckedChanged;
+
+            radioBgBlack = new RadioButton
+            {
+                Text = "黑色",
+                Location = new Point(200, 10),
+                Size = new Size(55, 24)
+            };
+            radioBgBlack.CheckedChanged += RadioBg_CheckedChanged;
+
+            radioBgWhite = new RadioButton
+            {
+                Text = "白色",
+                Location = new Point(255, 10),
+                Size = new Size(55, 24)
+            };
+            radioBgWhite.CheckedChanged += RadioBg_CheckedChanged;
+
+            radioBgGray = new RadioButton
+            {
+                Text = "中間值",
+                Location = new Point(310, 10),
+                Size = new Size(65, 24)
+            };
+            radioBgGray.CheckedChanged += RadioBg_CheckedChanged;
+
+            radioBgCustom = new RadioButton
+            {
+                Text = "自訂",
+                Location = new Point(375, 10),
+                Size = new Size(55, 24)
+            };
+            radioBgCustom.CheckedChanged += RadioBg_CheckedChanged;
+
+            panelCustomColorPreview = new Panel
+            {
+                Location = new Point(430, 13),
+                Size = new Size(18, 18),
+                BackColor = customBgColor,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            panelCustomColorPreview.Click += PanelCustomColorPreview_Click;
+
+            chkBlendBg = new CheckBox
+            {
+                Text = "融入原始影像",
+                Location = new Point(460, 10),
+                Size = new Size(110, 24),
+                Checked = false,
+                Enabled = true
+            };
+            chkBlendBg.CheckedChanged += ChkBlendBg_CheckedChanged;
+
+            panelBottomBg.Controls.AddRange(new Control[] {
+                lblBg, radioBgTransparent, radioBgBlack, radioBgWhite,
+                radioBgGray, radioBgCustom, panelCustomColorPreview, chkBlendBg
+            });
+
+            this.Controls.Add(panelBottomBg);
+            panelBottomBg.BringToFront();
+        }
+
+        private void PanelCustomColorPreview_Click(object sender, EventArgs e)
+        {
+            radioBgCustom.Checked = true;
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.Color = customBgColor;
+                if (cd.ShowDialog() == DialogResult.OK)
+                {
+                    customBgColor = cd.Color;
+                    panelCustomColorPreview.BackColor = customBgColor;
+                    UpdateBgRendering();
+                }
+            }
+        }
+
+        private void RadioBg_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateBgRendering();
+        }
+
+        private void ChkBlendBg_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateBgRendering();
+        }
+
+        private void UpdateBgRendering()
+        {
+            if (originalTransparentBmp == null) return;
+
+            Color bgCol = Color.Transparent;
+            if (radioBgBlack.Checked) bgCol = Color.Black;
+            else if (radioBgWhite.Checked) bgCol = Color.White;
+            else if (radioBgGray.Checked) bgCol = Color.FromArgb(medianR, medianG, medianB);
+            else if (radioBgCustom.Checked) bgCol = customBgColor;
+
+            // Determine if the actual bitmap pixels should be transparent (Alpha = 0)
+            // or opaque (Alpha = 255)
+            bool makeBitmapTransparent = radioBgTransparent.Checked || !chkBlendBg.Checked;
+
+            if (pBitmap != originalTransparentBmp && pBitmap != null)
+            {
+                pBitmap.Dispose();
+            }
+
+            if (makeBitmapTransparent)
+            {
+                pBitmap = (Bitmap)originalTransparentBmp.Clone();
+                pictureBox1.Image = pBitmap;
+
+                if (radioBgTransparent.Checked)
+                {
+                    pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                    pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
+                    pictureBox1.BackColor = Color.Transparent;
+                }
+                else
+                {
+                    pictureBox1.BackgroundImage = null;
+                    pictureBox1.BackColor = bgCol;
+                }
+            }
+            else
+            {
+                Color fillCol = radioBgTransparent.Checked ? Color.Black : bgCol;
+
+                Bitmap bakedBmp = new Bitmap(originalTransparentBmp.Width, originalTransparentBmp.Height, PixelFormat.Format32bppArgb);
+                using (Graphics g = Graphics.FromImage(bakedBmp))
+                {
+                    g.Clear(fillCol);
+                    g.DrawImage(originalTransparentBmp, 0, 0);
+                }
+
+                pBitmap = bakedBmp;
+                pictureBox1.Image = pBitmap;
+
+                if (radioBgTransparent.Checked)
+                {
+                    pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                    pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
+                    pictureBox1.BackColor = Color.Transparent;
+                }
+                else
+                {
+                    pictureBox1.BackgroundImage = null;
+                    pictureBox1.BackColor = SystemColors.Control;
+                }
+            }
+
+            DIPSample mainForm = this.MdiParent as DIPSample;
+            if (mainForm != null) mainForm.UpdateHistogram();
         }
 
         private Bitmap bmp_read(OpenFileDialog oFileDlg)
@@ -46,6 +383,18 @@ namespace DIP
             pictureBox1.Image = pBitmap;
             pictureBox1.Width = pBitmap.Width;
             pictureBox1.Height = pBitmap.Height;
+
+            if (pBitmap.PixelFormat == PixelFormat.Format32bppArgb)
+            {
+                pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
+                pictureBox1.BackColor = Color.Transparent;
+            }
+            else
+            {
+                pictureBox1.BackgroundImage = null;
+                pictureBox1.BackColor = SystemColors.Control;
+            }
         }
 
         private void bmp_disp(Bitmap pBitmap, PictureBox pictureBox2)
@@ -66,17 +415,57 @@ namespace DIP
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-                        try
-                        {
-                                Color pixel = pBitmap.GetPixel(e.X, e.Y);
-                                pf1.Text = "(" + e.X + "," + e.Y + ")" +
-                                            "=(" + pixel.R.ToString() + "," + pixel.G.ToString() + "," + pixel.B.ToString() + ")";
-                        }
-                        catch
-                        {
+            try
+            {
+                Color pixel = pBitmap.GetPixel(e.X, e.Y);
+                pf1.Text = "(" + e.X + "," + e.Y + ")" +
+                            "=(" + pixel.R.ToString() + "," + pixel.G.ToString() + "," + pixel.B.ToString() + ")";
+            }
+            catch
+            {
 
-                        }
+            }
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            if (pBitmap != null)
+            {
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    int targetClientWidth, targetClientHeight;
+                    if (panelBottomBg != null)
+                    {
+                        targetClientWidth = Math.Max(pBitmap.Width, 600);
+                        targetClientHeight = pBitmap.Height + 45;
+                    }
+                    else
+                    {
+                        targetClientWidth = pBitmap.Width;
+                        targetClientHeight = pBitmap.Height;
+                    }
+                    this.ClientSize = new Size(targetClientWidth, targetClientHeight);
+                });
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            if (originalTransparentBmp != null)
+            {
+                originalTransparentBmp.Dispose();
+                originalTransparentBmp = null;
+            }
+            if (pBitmap != null)
+            {
+                pictureBox1.Image = null;
+                pBitmap.Dispose();
+                pBitmap = null;
+            }
+            base.OnFormClosed(e);
+            DIPSample mainForm = this.MdiParent as DIPSample;
+            if (mainForm != null) mainForm.UpdateHistogram();
+        }
     }
 }

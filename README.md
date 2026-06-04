@@ -90,10 +90,16 @@ $$\text{Index} = (y \times W + x) \times d + c$$
      * `int newW`, `int newH`: 縮放後新影像大小
      * `int mode`: 插值模式（`0`: 最近鄰 Nearest Neighbor, `1`: 雙線性 Bilinear）
 2. **影像旋轉 (`rotate_image`)**
-   * **功能:** 影像旋轉，保證背景填滿（補零變黑），自動擴充畫布（影像不被切掉）。採用三步驟轉換：位移到原點 $\rightarrow$ 旋轉矩陣 $\rightarrow$ 平移回原位。
+   * **功能:** 影像旋轉，支援自動擴充畫布（影像不被切掉），並將背景區域填滿指定色彩。
    * **參數:**
-     * `double angle_deg`: 旋轉角度（角度制，$-180.0 \sim 180.0$）
-     * `int mode`: 插值模式（`0`: 最近鄰, `1`: 雙線性）
+     * `int* f`: 輸入影像一維像素陣列指標
+     * `int w`, `int h`: 原始影像寬高
+     * `int d`: 深度通道數
+     * `int* g`: 輸出旋轉影像陣列指標
+     * `int newW`, `int newH`: 旋轉後新影像畫布大小
+     * `double angle_deg`: 旋轉角度（角度制，$0.0 \sim 359.0$）
+     * `int mode`: 插值與映射模式（`0`: 反向最近鄰, `1`: 反向雙線性, `2`: 正向映射）
+     * `int bg_r`, `int bg_g`, `int bg_b`, `int bg_a`: 填補背景的 R、G、B、A (Alpha) 通道色彩數值
 
 ### 2.6 二值化門檻分割 (Segmentation)
 1. **手動固定門檻分割 (`manual_threshold`)**
