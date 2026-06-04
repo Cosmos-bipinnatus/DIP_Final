@@ -29,6 +29,7 @@ namespace DIP
         internal Color initialCustomColor = Color.FromArgb(240, 240, 240);
 
         private Panel panelBottomBg;
+        private Panel panelControlsContainer;
         private RadioButton radioBgTransparent;
         private RadioButton radioBgBlack;
         private RadioButton radioBgWhite;
@@ -105,10 +106,10 @@ namespace DIP
                 InitializeBgPanel();
                 ApplyInitialSettings();
 
-                int targetClientWidth = Math.Max(pBitmap.Width + 24, 600);
-                int targetClientHeight = pBitmap.Height + 45 + 24;
+                int targetClientWidth = Math.Max(pBitmap.Width, 425);
+                int targetClientHeight = pBitmap.Height + 45;
                 this.ClientSize = new Size(targetClientWidth, targetClientHeight);
-                this.MinimumSize = new Size(600, 150);
+                this.MinimumSize = new Size(425, 150);
             }
 
             InitializeContextMenu();
@@ -197,18 +198,16 @@ namespace DIP
                 Padding = new Padding(5)
             };
 
-            Label lblBg = new Label
+            panelControlsContainer = new Panel
             {
-                Text = "背景預覽 (Background):",
-                Location = new Point(10, 12),
-                Size = new Size(130, 20),
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+                Size = new Size(425, 40),
+                BackColor = Color.Transparent
             };
 
             radioBgTransparent = new RadioButton
             {
                 Text = "透明",
-                Location = new Point(145, 10),
+                Location = new Point(0, 8),
                 Size = new Size(55, 24),
                 Checked = true
             };
@@ -217,7 +216,7 @@ namespace DIP
             radioBgBlack = new RadioButton
             {
                 Text = "黑色",
-                Location = new Point(200, 10),
+                Location = new Point(55, 8),
                 Size = new Size(55, 24)
             };
             radioBgBlack.CheckedChanged += RadioBg_CheckedChanged;
@@ -225,7 +224,7 @@ namespace DIP
             radioBgWhite = new RadioButton
             {
                 Text = "白色",
-                Location = new Point(255, 10),
+                Location = new Point(110, 8),
                 Size = new Size(55, 24)
             };
             radioBgWhite.CheckedChanged += RadioBg_CheckedChanged;
@@ -233,7 +232,7 @@ namespace DIP
             radioBgGray = new RadioButton
             {
                 Text = "中間值",
-                Location = new Point(310, 10),
+                Location = new Point(165, 8),
                 Size = new Size(65, 24)
             };
             radioBgGray.CheckedChanged += RadioBg_CheckedChanged;
@@ -241,14 +240,14 @@ namespace DIP
             radioBgCustom = new RadioButton
             {
                 Text = "自訂",
-                Location = new Point(375, 10),
+                Location = new Point(230, 8),
                 Size = new Size(55, 24)
             };
             radioBgCustom.CheckedChanged += RadioBg_CheckedChanged;
 
             panelCustomColorPreview = new Panel
             {
-                Location = new Point(430, 13),
+                Location = new Point(285, 11),
                 Size = new Size(18, 18),
                 BackColor = customBgColor,
                 BorderStyle = BorderStyle.FixedSingle
@@ -258,17 +257,28 @@ namespace DIP
             chkBlendBg = new CheckBox
             {
                 Text = "融入原始影像",
-                Location = new Point(460, 10),
+                Location = new Point(315, 8),
                 Size = new Size(110, 24),
                 Checked = false,
                 Enabled = true
             };
             chkBlendBg.CheckedChanged += ChkBlendBg_CheckedChanged;
 
-            panelBottomBg.Controls.AddRange(new Control[] {
-                lblBg, radioBgTransparent, radioBgBlack, radioBgWhite,
+            panelControlsContainer.Controls.AddRange(new Control[] {
+                radioBgTransparent, radioBgBlack, radioBgWhite,
                 radioBgGray, radioBgCustom, panelCustomColorPreview, chkBlendBg
             });
+
+            panelBottomBg.Controls.Add(panelControlsContainer);
+
+            panelBottomBg.SizeChanged += (s, e) => {
+                panelControlsContainer.Left = (panelBottomBg.Width - panelControlsContainer.Width) / 2;
+                panelControlsContainer.Top = (panelBottomBg.Height - panelControlsContainer.Height) / 2;
+            };
+
+            // Force initial position
+            panelControlsContainer.Left = (panelBottomBg.Width - panelControlsContainer.Width) / 2;
+            panelControlsContainer.Top = (panelBottomBg.Height - panelControlsContainer.Height) / 2;
 
             this.Controls.Add(panelBottomBg);
             panelBottomBg.BringToFront();
@@ -277,21 +287,31 @@ namespace DIP
         private void PanelCustomColorPreview_Click(object sender, EventArgs e)
         {
             radioBgCustom.Checked = true;
+            ChooseCustomColor();
+        }
+
+        private void RadioBg_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioBgCustom.Checked && !RotateImageForm.lastCustomBgColor.HasValue)
+            {
+                ChooseCustomColor();
+            }
+            UpdateBgRendering();
+        }
+
+        private void ChooseCustomColor()
+        {
             using (ColorDialog cd = new ColorDialog())
             {
                 cd.Color = customBgColor;
                 if (cd.ShowDialog() == DialogResult.OK)
                 {
                     customBgColor = cd.Color;
+                    RotateImageForm.lastCustomBgColor = cd.Color; // Update shared color history
                     panelCustomColorPreview.BackColor = customBgColor;
                     UpdateBgRendering();
                 }
             }
-        }
-
-        private void RadioBg_CheckedChanged(object sender, EventArgs e)
-        {
-            UpdateBgRendering();
         }
 
         private void ChkBlendBg_CheckedChanged(object sender, EventArgs e)
@@ -362,6 +382,26 @@ namespace DIP
                 }
             }
 
+            if (chkBlendBg.Checked)
+            {
+                if (radioBgTransparent.Checked)
+                {
+                    this.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                    this.BackgroundImageLayout = ImageLayout.Tile;
+                    this.BackColor = SystemColors.Control;
+                }
+                else
+                {
+                    this.BackgroundImage = null;
+                    this.BackColor = bgCol;
+                }
+            }
+            else
+            {
+                this.BackgroundImage = null;
+                this.BackColor = SystemColors.Control;
+            }
+
             DIPSample mainForm = this.MdiParent as DIPSample;
             if (mainForm != null) mainForm.UpdateHistogram();
         }
@@ -378,11 +418,10 @@ namespace DIP
 
         private void bmp_dip(Bitmap pBitmap, PictureBox pictureBox1)
         {
-            this.Width = pBitmap.Width + 16 + (this.Width - this.ClientRectangle.Width);
-            this.Height = pBitmap.Height + 16 + (this.Height - this.ClientRectangle.Height);
+            this.Width = pBitmap.Width + (this.Width - this.ClientRectangle.Width);
+            this.Height = pBitmap.Height + (this.Height - this.ClientRectangle.Height);
             pictureBox1.Image = pBitmap;
-            pictureBox1.Width = pBitmap.Width;
-            pictureBox1.Height = pBitmap.Height;
+            LayoutControls();
 
             if (pBitmap.PixelFormat == PixelFormat.Format32bppArgb)
             {
@@ -419,21 +458,13 @@ namespace DIP
 
             int imgW = pBitmap.Width;
             int imgH = pBitmap.Height;
-            int pbW = pictureBox1.Width;
-            int pbH = pictureBox1.Height;
 
-            int offsetX = (pbW - imgW) / 2;
-            int offsetY = (pbH - imgH) / 2;
-
-            int imgX = e.X - offsetX;
-            int imgY = e.Y - offsetY;
-
-            if (imgX >= 0 && imgX < imgW && imgY >= 0 && imgY < imgH)
+            if (e.X >= 0 && e.X < imgW && e.Y >= 0 && e.Y < imgH)
             {
                 try
                 {
-                    Color pixel = pBitmap.GetPixel(imgX, imgY);
-                    pf1.Text = "(" + imgX + "," + imgY + ")" +
+                    Color pixel = pBitmap.GetPixel(e.X, e.Y);
+                    pf1.Text = "(" + e.X + "," + e.Y + ")" +
                                 "=(" + pixel.R.ToString() + "," + pixel.G.ToString() + "," + pixel.B.ToString() + ")";
                 }
                 catch
@@ -447,6 +478,34 @@ namespace DIP
             }
         }
 
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            LayoutControls();
+        }
+
+        private void LayoutControls()
+        {
+            if (pBitmap == null || pictureBox1 == null) return;
+
+            pictureBox1.Width = pBitmap.Width;
+            pictureBox1.Height = pBitmap.Height;
+
+            // Center horizontally
+            pictureBox1.Left = (this.ClientSize.Width - pictureBox1.Width) / 2;
+
+            // Center vertically in available height
+            int panelHeight = (panelBottomBg != null && panelBottomBg.Visible) ? panelBottomBg.Height : 0;
+            int availableHeight = this.ClientSize.Height - panelHeight;
+            pictureBox1.Top = (availableHeight - pictureBox1.Height) / 2;
+
+            // Prevent top overflow for standard images to align top boundary if window is small
+            if (panelBottomBg == null && pictureBox1.Top < 0)
+            {
+                pictureBox1.Top = 0;
+            }
+        }
+
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
@@ -457,13 +516,13 @@ namespace DIP
                     int targetClientWidth, targetClientHeight;
                     if (panelBottomBg != null)
                     {
-                        targetClientWidth = Math.Max(pBitmap.Width + 24, 600);
-                        targetClientHeight = pBitmap.Height + 45 + 24;
+                        targetClientWidth = Math.Max(pBitmap.Width, 425);
+                        targetClientHeight = pBitmap.Height + 45;
                     }
                     else
                     {
-                        targetClientWidth = pBitmap.Width + 16;
-                        targetClientHeight = pBitmap.Height + 16;
+                        targetClientWidth = pBitmap.Width;
+                        targetClientHeight = pBitmap.Height;
                     }
                     this.ClientSize = new Size(targetClientWidth, targetClientHeight);
                 });

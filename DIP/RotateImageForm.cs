@@ -43,7 +43,7 @@ namespace DIP
         private RadioButton radioBgGray;
         private RadioButton radioBgCustom;
         private Panel panelCustomColorPreview;
-        private static Color? lastCustomBgColor = null;
+        internal static Color? lastCustomBgColor = null;
         private Color customBgColor = Color.FromArgb(240, 240, 240);
 
         private Label lblSizeInfo;
