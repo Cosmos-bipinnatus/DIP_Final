@@ -156,6 +156,7 @@ namespace DIP
             this.bilinearInterpolationToolStripMenuItem.Click += (s, e) => ApplyScaling(1);
             this.rotationToolStripMenuItem.Click += (s, e) => ApplyRotation();
             this.otsusMethodToolStripMenuItem.Click += (s, e) => ApplyOtsu();
+            this.manualThresholdToolStripMenuItem.Click += (s, e) => ApplyManualThreshold();
             this.bitPlanesToolStripMenuItem.Click += (s, e) => TriggerBitPlanes();
             this.averagingFilterToolStripMenuItem.Click += (s, e) => ApplyFilter(0); // Mean
             this.gaussianFiltersToolStripMenuItem.Click += (s, e) => ApplyFilter(1); // Gaussian
@@ -394,6 +395,10 @@ namespace DIP
             else if (activeChild is RotateImageForm rotForm)
             {
                 bmp = rotForm.ProcessedBitmap;
+            }
+            else if (activeChild is ManualThresholdForm mtForm)
+            {
+                bmp = mtForm.ProcessedBitmap;
             }
 
             if (bmp == null)
@@ -922,8 +927,8 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            int scalePercent = 200;
-            if (ParamDialog.ShowSliderDialog("影像縮放 (Image Scaling)", "輸入縮放百分比 (Enter scaling percentage, 10% to 500%):", 10, 500, 200, out scalePercent))
+            int scalePercent = 100;
+            if (ParamDialog.ShowScaleSliderDialog("影像縮放 (Image Scaling)", "輸入縮放百分比 (Enter scaling percentage, 10% to 500%):", 100, out scalePercent))
             {
                 double scale = (double)scalePercent / 100.0;
                 Bitmap bmp = activeChild.pBitmap;
@@ -996,29 +1001,21 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            int T = 128;
-            if (ParamDialog.ShowSliderDialog("手動門檻 (Manual Threshold)", "輸入門檻值 (Enter threshold value, 0 to 255):", 0, 255, 128, out T))
+            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
             {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        manual_threshold(f0, tempW, tempH, d, g0, T);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, "門檻二值化 (Threshold Binarized, T=" + T + ")");
+                MessageBox.Show(
+                    "手動門檻二值化功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
             }
+
+            ManualThresholdForm mtForm = new ManualThresholdForm(this, activeChild.pBitmap);
+            mtForm.pf1 = this.stStripLabel;
+            mtForm.MdiParent = this;
+            mtForm.Show();
         }
 
         private void ApplyEdge(int mode)

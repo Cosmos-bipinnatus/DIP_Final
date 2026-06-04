@@ -106,6 +106,9 @@
     <Compile Include="ParamDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ManualThresholdForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="DIPSample.resx">

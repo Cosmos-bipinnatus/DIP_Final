@@ -68,6 +68,68 @@ namespace DIP
             }
         }
 
+        // 1b. Non-linear Scale Slider Dialog where 100% is mapped to the middle (value 100 in 0~200 range)
+        public static bool ShowScaleSliderDialog(string title, string labelText, int defaultVal, out int result)
+        {
+            result = defaultVal;
+            using (ParamDialog dlg = new ParamDialog())
+            {
+                dlg.Text = title;
+                dlg.ClientSize = new Size(380, 160);
+
+                Label lbl = new Label { Text = labelText, Location = new Point(20, 20), AutoSize = true, ForeColor = Color.Black };
+                Label lblVal = new Label { Text = defaultVal.ToString(), Location = new Point(320, 50), Size = new Size(40, 20), ForeColor = Color.RoyalBlue, Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
+                
+                // Map defaultVal to trackbar value (0~200, center is 100)
+                int initialBarVal = 100;
+                if (defaultVal <= 100)
+                {
+                    // 10 -> 0, 100 -> 100
+                    initialBarVal = (int)Math.Round((defaultVal - 10) / 90.0 * 100.0);
+                }
+                else
+                {
+                    // 100 -> 100, 500 -> 200
+                    initialBarVal = 100 + (int)Math.Round((defaultVal - 100) / 400.0 * 100.0);
+                }
+                if (initialBarVal < 0) initialBarVal = 0;
+                if (initialBarVal > 200) initialBarVal = 200;
+
+                TrackBar bar = new TrackBar { Minimum = 0, Maximum = 200, Value = initialBarVal, Location = new Point(20, 50), Size = new Size(290, 45), TickStyle = TickStyle.None };
+                bar.ForeColor = Color.Black;
+
+                // Function to map bar value to actual scale percentage
+                Func<int, int> mapVal = (v) => {
+                    if (v <= 100)
+                    {
+                        return 10 + (int)Math.Round(v * 0.9);
+                    }
+                    else
+                    {
+                        return 100 + (int)Math.Round((v - 100) * 4.0);
+                    }
+                };
+
+                bar.ValueChanged += (s, e) => { 
+                    lblVal.Text = mapVal(bar.Value).ToString(); 
+                };
+
+                Button btnOk = new Button { Text = "確定 (OK)", DialogResult = DialogResult.OK, Location = new Point(160, 110), Size = new Size(90, 30), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(230, 230, 235), ForeColor = Color.Black };
+                Button btnCancel = new Button { Text = "取消 (Cancel)", DialogResult = DialogResult.Cancel, Location = new Point(265, 110), Size = new Size(90, 30), FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderColor = Color.FromArgb(200, 200, 200) }, ForeColor = Color.FromArgb(64, 64, 64) };
+
+                dlg.Controls.AddRange(new Control[] { lbl, lblVal, bar, btnOk, btnCancel });
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCancel;
+
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    result = mapVal(bar.Value);
+                    return true;
+                }
+                return false;
+            }
+        }
+
         // 2. Brightness & Contrast Dual Slider Dialog
         public static bool ShowBrightnessContrastDialog(out double alpha, out int beta)
         {

@@ -86,8 +86,10 @@ __declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h,
     for (int i = 0; i < 256; i++) {
       double val = alpha * (double)i + (double)beta;
       int rounded_val = (int)(val + (val >= 0.0 ? 0.5 : -0.5));
-      if (rounded_val < 0) rounded_val = 0;
-      if (rounded_val > 255) rounded_val = 255;
+      if (rounded_val < 0)
+        rounded_val = 0;
+      if (rounded_val > 255)
+        rounded_val = 255;
       lut[i] = rounded_val;
     }
   } else {
@@ -97,8 +99,10 @@ __declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h,
     for (int i = 1; i < 256; i++) {
       double val = 255.0 * std::pow((double)i / 255.0, gamma);
       int rounded_val = (int)(val + 0.5);
-      if (rounded_val < 0) rounded_val = 0;
-      if (rounded_val > 255) rounded_val = 255;
+      if (rounded_val < 0)
+        rounded_val = 0;
+      if (rounded_val > 255)
+        rounded_val = 255;
       lut[i] = rounded_val;
     }
   }
@@ -106,8 +110,10 @@ __declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h,
   int total_elements = (d == 1) ? (w * h) : (w * h * 3);
   for (int i = 0; i < total_elements; i++) {
     int pixel_val = f[i];
-    if (pixel_val < 0) pixel_val = 0;
-    if (pixel_val > 255) pixel_val = 255;
+    if (pixel_val < 0)
+      pixel_val = 0;
+    if (pixel_val > 255)
+      pixel_val = 255;
     g[i] = lut[pixel_val];
   }
 }
@@ -163,7 +169,8 @@ __declspec(dllexport) void calculate_histogram(int *f, int w, int h, int d,
   }
 }
 
-__declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, int *g) {
+__declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d,
+                                                  int *g) {
   if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || (d != 1 && d != 3)) {
     return;
   }
@@ -188,8 +195,10 @@ __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, i
     for (int i = 0; i < 256; i++) {
       sum += hist[0][i];
       int val = (int)(sum * scale_factor + 0.5);
-      if (val < 0) val = 0;
-      if (val > 255) val = 255;
+      if (val < 0)
+        val = 0;
+      if (val > 255)
+        val = 255;
       lut[0][i] = val;
     }
     // 3. Map pixels
@@ -197,8 +206,10 @@ __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, i
       for (int x = 0; x < w; x++) {
         int idx = y * w + x;
         int gray_val = f[idx];
-        if (gray_val < 0) gray_val = 0;
-        if (gray_val > 255) gray_val = 255;
+        if (gray_val < 0)
+          gray_val = 0;
+        if (gray_val > 255)
+          gray_val = 255;
         g[idx] = lut[0][gray_val];
       }
     }
@@ -211,9 +222,12 @@ __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, i
         int g_val = f[idx + 1];
         int r_val = f[idx + 2];
 
-        if (b_val >= 0 && b_val <= 255) hist[0][b_val]++;
-        if (g_val >= 0 && g_val <= 255) hist[1][g_val]++;
-        if (r_val >= 0 && r_val <= 255) hist[2][r_val]++;
+        if (b_val >= 0 && b_val <= 255)
+          hist[0][b_val]++;
+        if (g_val >= 0 && g_val <= 255)
+          hist[1][g_val]++;
+        if (r_val >= 0 && r_val <= 255)
+          hist[2][r_val]++;
       }
     }
     // 2. Calculate CDF and LUT
@@ -222,8 +236,10 @@ __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, i
       for (int j = 0; j < 256; j++) {
         sum += hist[i][j];
         int val = (int)(sum * scale_factor + 0.5);
-        if (val < 0) val = 0;
-        if (val > 255) val = 255;
+        if (val < 0)
+          val = 0;
+        if (val > 255)
+          val = 255;
         lut[i][j] = val;
       }
     }
@@ -235,12 +251,18 @@ __declspec(dllexport) void histogram_equalization(int *f, int w, int h, int d, i
         int g_val = f[idx + 1];
         int r_val = f[idx + 2];
 
-        if (b_val < 0) b_val = 0;
-        if (b_val > 255) b_val = 255;
-        if (g_val < 0) g_val = 0;
-        if (g_val > 255) g_val = 255;
-        if (r_val < 0) r_val = 0;
-        if (r_val > 255) r_val = 255;
+        if (b_val < 0)
+          b_val = 0;
+        if (b_val > 255)
+          b_val = 255;
+        if (g_val < 0)
+          g_val = 0;
+        if (g_val > 255)
+          g_val = 255;
+        if (r_val < 0)
+          r_val = 0;
+        if (r_val > 255)
+          r_val = 255;
 
         g[idx + 0] = lut[0][b_val];
         g[idx + 1] = lut[1][g_val];
@@ -266,7 +288,8 @@ __declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g,
 
 __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
                                         int newW, int newH, double angle_deg,
-                                        int mode, int bg_r, int bg_g, int bg_b, int bg_a) {
+                                        int mode, int bg_r, int bg_g, int bg_b,
+                                        int bg_a) {
   // Defensive checks
   if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || newW <= 0 ||
       newH <= 0) {
@@ -373,7 +396,8 @@ __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
               g[dst_idx + 0] = bg_b;
               g[dst_idx + 1] = bg_g;
               g[dst_idx + 2] = bg_r;
-              if (d == 4) g[dst_idx + 3] = bg_a;
+              if (d == 4)
+                g[dst_idx + 3] = bg_a;
             }
           }
 
@@ -394,7 +418,8 @@ __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
               g[dst_idx + 0] = bg_b;
               g[dst_idx + 1] = bg_g;
               g[dst_idx + 2] = bg_r;
-              if (d == 4) g[dst_idx + 3] = bg_a;
+              if (d == 4)
+                g[dst_idx + 3] = bg_a;
             }
           } else {
             double a = src_x - (double)x0; // fractional x
@@ -415,11 +440,10 @@ __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
               g[yp * newW + xp] = rounded;
             } else { // d == 3 or d == 4, interpolate each channel independently
               for (int c = 0; c < d; c++) {
-                double val =
-                    w00 * f[(y0 * w + x0) * d + c] +
-                    w10 * f[(y0 * w + x1) * d + c] +
-                    w01 * f[(y1 * w + x0) * d + c] +
-                    w11 * f[(y1 * w + x1) * d + c];
+                double val = w00 * f[(y0 * w + x0) * d + c] +
+                             w10 * f[(y0 * w + x1) * d + c] +
+                             w01 * f[(y1 * w + x0) * d + c] +
+                             w11 * f[(y1 * w + x1) * d + c];
                 int rounded = (int)(val + 0.5);
                 if (rounded < 0)
                   rounded = 0;
@@ -440,7 +464,8 @@ __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
             g[dst_idx + 0] = bg_b;
             g[dst_idx + 1] = bg_g;
             g[dst_idx + 2] = bg_r;
-            if (d == 4) g[dst_idx + 3] = bg_a;
+            if (d == 4)
+              g[dst_idx + 3] = bg_a;
           }
         }
       }
@@ -450,24 +475,116 @@ __declspec(dllexport) void rotate_image(int *f, int w, int h, int d, int *g,
 
 __declspec(dllexport) void scale_image(int *f, int w, int h, int d, int *g,
                                        int newW, int newH, int mode) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
-  DIPPROC_UNUSED(newW);
-  DIPPROC_UNUSED(newH);
-  DIPPROC_UNUSED(mode);
-}
+  if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || newW <= 0 || newH <= 0 || d <= 0) {
+    return;
+  }
 
+  double scaleX = (double)w / newW;
+  double scaleY = (double)h / newH;
+
+  if (mode == 0) {
+    // ─── Nearest Neighbor Interpolation ───
+    for (int y = 0; y < newH; y++) {
+      double src_y = ((double)y + 0.5) * scaleY - 0.5;
+      int iy = (int)std::floor(src_y + 0.5);
+      if (iy < 0) iy = 0;
+      if (iy > h - 1) iy = h - 1;
+
+      for (int x = 0; x < newW; x++) {
+        double src_x = ((double)x + 0.5) * scaleX - 0.5;
+        int ix = (int)std::floor(src_x + 0.5);
+        if (ix < 0) ix = 0;
+        if (ix > w - 1) ix = w - 1;
+
+        int src_idx = (iy * w + ix) * d;
+        int dst_idx = (y * newW + x) * d;
+        for (int c = 0; c < d; c++) {
+          g[dst_idx + c] = f[src_idx + c];
+        }
+      }
+    }
+  } else if (mode == 1) {
+    // ─── Bilinear Interpolation ───
+    for (int y = 0; y < newH; y++) {
+      double src_y = ((double)y + 0.5) * scaleY - 0.5;
+      int y1 = (int)std::floor(src_y);
+      int y2 = y1 + 1;
+      double dy = src_y - y1;
+
+      // Clamp weights to [0.0, 1.0]
+      if (dy < 0.0) dy = 0.0;
+      if (dy > 1.0) dy = 1.0;
+
+      // Clamp coordinates
+      if (y1 < 0) y1 = 0;
+      if (y1 > h - 1) y1 = h - 1;
+      if (y2 < 0) y2 = 0;
+      if (y2 > h - 1) y2 = h - 1;
+
+      for (int x = 0; x < newW; x++) {
+        double src_x = ((double)x + 0.5) * scaleX - 0.5;
+        int x1 = (int)std::floor(src_x);
+        int x2 = x1 + 1;
+        double dx = src_x - x1;
+
+        // Clamp weights to [0.0, 1.0]
+        if (dx < 0.0) dx = 0.0;
+        if (dx > 1.0) dx = 1.0;
+
+        // Clamp coordinates
+        if (x1 < 0) x1 = 0;
+        if (x1 > w - 1) x1 = w - 1;
+        if (x2 < 0) x2 = 0;
+        if (x2 > w - 1) x2 = w - 1;
+
+        double w00 = (1.0 - dx) * (1.0 - dy);
+        double w10 = dx * (1.0 - dy);
+        double w01 = (1.0 - dx) * dy;
+        double w11 = dx * dy;
+
+        int dst_idx = (y * newW + x) * d;
+
+        for (int c = 0; c < d; c++) {
+          double val = w00 * f[(y1 * w + x1) * d + c] +
+                       w10 * f[(y1 * w + x2) * d + c] +
+                       w01 * f[(y2 * w + x1) * d + c] +
+                       w11 * f[(y2 * w + x2) * d + c];
+          
+          // Clamp result to [0, 255] and round
+          int pixel_val = (int)(val + 0.5);
+          if (pixel_val < 0) pixel_val = 0;
+          if (pixel_val > 255) pixel_val = 255;
+
+          g[dst_idx + c] = pixel_val;
+        }
+      }
+    }
+  }
+}
 __declspec(dllexport) void manual_threshold(int *f, int w, int h, int d, int *g,
                                             int T) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
-  DIPPROC_UNUSED(T);
+  if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0) {
+    return;
+  }
+  int total = w * h;
+  for (int i = 0; i < total; i++) {
+    if (d == 1) {
+      g[i] = (f[i] >= T) ? 255 : 0;
+    } else {
+      int idx = i * d;
+      double b_val = f[idx + 0];
+      double g_val = f[idx + 1];
+      double r_val = f[idx + 2];
+      int gray_val = (int)(r_val * 0.299 + g_val * 0.587 + b_val * 0.114 + 0.5);
+      int bin_val = (gray_val >= T) ? 255 : 0;
+      g[idx + 0] = bin_val;
+      g[idx + 1] = bin_val;
+      g[idx + 2] = bin_val;
+      if (d == 4) {
+        g[idx + 3] = f[idx + 3]; // Preserve original Alpha
+      }
+    }
+  }
 }
 
 __declspec(dllexport) void otsu_threshold(int *f, int w, int h, int d, int *g) {

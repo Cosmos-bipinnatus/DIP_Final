@@ -47,6 +47,7 @@ namespace DIP
             this.rotationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.segmentationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.otsusMethodToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.manualThresholdToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.edgeDetectionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.neighborhoodProcessingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bitPlanesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -129,7 +130,7 @@ namespace DIP
             this.histogramEqualizationGammaValueToolStripMenuItem});
             iPToolStripMenuItem.Name = "iPToolStripMenuItem";
             iPToolStripMenuItem.Size = new System.Drawing.Size(35, 24);
-            iPToolStripMenuItem.Text = "影像處理 (IP)";
+            iPToolStripMenuItem.Text = "基本處理 (Basic)";
             // 
             // histogramToolStripMenuItem
             // 
@@ -150,13 +151,13 @@ namespace DIP
             // 
             this.histogramEqualizationGammaValueToolStripMenuItem.Name = "histogramEqualizationGammaValueToolStripMenuItem";
             this.histogramEqualizationGammaValueToolStripMenuItem.Size = new System.Drawing.Size(350, 26);
-            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "Gamma 冪律轉換 (Gamma Power-Law Transform)";
+            this.histogramEqualizationGammaValueToolStripMenuItem.Text = "亮度對比與 Gamma 調整 (線性與非線性)";
             // 
             // histogramEqualizationLinearToolStripMenuItem
             // 
             this.histogramEqualizationLinearToolStripMenuItem.Name = "histogramEqualizationLinearToolStripMenuItem";
             this.histogramEqualizationLinearToolStripMenuItem.Size = new System.Drawing.Size(350, 26);
-            this.histogramEqualizationLinearToolStripMenuItem.Text = "直方圖等化 (Linear)";
+            this.histogramEqualizationLinearToolStripMenuItem.Text = "直方圖等化 (Histogram Equalization)";
             // 
             // interpolationToolStripMenuItem
             // 
@@ -165,7 +166,7 @@ namespace DIP
             this.bilinearInterpolationToolStripMenuItem});
             this.interpolationToolStripMenuItem.Name = "interpolationToolStripMenuItem";
             this.interpolationToolStripMenuItem.Size = new System.Drawing.Size(109, 24);
-            this.interpolationToolStripMenuItem.Text = "插值 (Interpolation)";
+            this.interpolationToolStripMenuItem.Text = "幾何縮放 (Scaling)";
             // 
             // nearestNeighborInterpolationToolStripMenuItem
             // 
@@ -177,27 +178,34 @@ namespace DIP
             // 
             this.bilinearInterpolationToolStripMenuItem.Name = "bilinearInterpolationToolStripMenuItem";
             this.bilinearInterpolationToolStripMenuItem.Size = new System.Drawing.Size(300, 26);
-            this.bilinearInterpolationToolStripMenuItem.Text = "雙線性插值 (Bilinear)";
+            this.bilinearInterpolationToolStripMenuItem.Text = "雙線性插值 (Bilinear Interpolation)";
             // 
             // rotationToolStripMenuItem
             // 
             this.rotationToolStripMenuItem.Name = "rotationToolStripMenuItem";
             this.rotationToolStripMenuItem.Size = new System.Drawing.Size(80, 24);
-            this.rotationToolStripMenuItem.Text = "旋轉 (Rotation)";
+            this.rotationToolStripMenuItem.Text = "影像旋轉 (Image Rotation)";
             // 
             // segmentationToolStripMenuItem
             // 
             this.segmentationToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.otsusMethodToolStripMenuItem});
+            this.otsusMethodToolStripMenuItem,
+            this.manualThresholdToolStripMenuItem});
             this.segmentationToolStripMenuItem.Name = "segmentationToolStripMenuItem";
             this.segmentationToolStripMenuItem.Size = new System.Drawing.Size(116, 24);
-            this.segmentationToolStripMenuItem.Text = "影像分割 (Segmentation)";
+            this.segmentationToolStripMenuItem.Text = "影像分割 / 二值化 (Segmentation & Thresholding)";
             // 
             // otsusMethodToolStripMenuItem
             // 
             this.otsusMethodToolStripMenuItem.Name = "otsusMethodToolStripMenuItem";
             this.otsusMethodToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.otsusMethodToolStripMenuItem.Text = "大津法 (Otsu's Method)";
+            this.otsusMethodToolStripMenuItem.Text = "大津法二值化 (Otsu Thresholding)";
+            // 
+            // manualThresholdToolStripMenuItem
+            // 
+            this.manualThresholdToolStripMenuItem.Name = "manualThresholdToolStripMenuItem";
+            this.manualThresholdToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.manualThresholdToolStripMenuItem.Text = "手動門檻二值化 (Manual Thresholding)";
             // 
             // edgeDetectionToolStripMenuItem
             // 
@@ -212,13 +220,13 @@ namespace DIP
             this.gaussianFiltersToolStripMenuItem});
             this.neighborhoodProcessingToolStripMenuItem.Name = "neighborhoodProcessingToolStripMenuItem";
             this.neighborhoodProcessingToolStripMenuItem.Size = new System.Drawing.Size(195, 24);
-            this.neighborhoodProcessingToolStripMenuItem.Text = "鄰域處理 (Neighborhood Processing)";
+            this.neighborhoodProcessingToolStripMenuItem.Text = "空間濾波 (Spatial Filtering)";
             // 
             // bitPlanesToolStripMenuItem
             // 
             this.bitPlanesToolStripMenuItem.Name = "bitPlanesToolStripMenuItem";
             this.bitPlanesToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.bitPlanesToolStripMenuItem.Text = "位元平面 (Bit Planes)";
+            this.bitPlanesToolStripMenuItem.Text = "位元平面切片 (Bit Plane Slicing)";
             // 
             // averagingFilterToolStripMenuItem
             // 
@@ -230,7 +238,7 @@ namespace DIP
             // 
             this.gaussianFiltersToolStripMenuItem.Name = "gaussianFiltersToolStripMenuItem";
             this.gaussianFiltersToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.gaussianFiltersToolStripMenuItem.Text = "高斯濾波 (Gaussian Filters)";
+            this.gaussianFiltersToolStripMenuItem.Text = "高斯濾波 (Gaussian Filter)";
             // 
             // DIPSample
             // 
@@ -275,6 +283,7 @@ namespace DIP
         private System.Windows.Forms.ToolStripMenuItem bitPlanesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem neighborhoodProcessingToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem otsusMethodToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem manualThresholdToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem edgeDetectionToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem averagingFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gaussianFiltersToolStripMenuItem;

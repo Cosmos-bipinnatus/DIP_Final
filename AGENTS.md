@@ -74,3 +74,5 @@
 | **直方圖等化** | `histogram_equalization` | 已實作 | 支援單通道灰階與三通道 BGR 的獨立累計分佈函數 (CDF) 均衡化，對比度低之影像等化後可顯著增強細節。 |
 | **亮度對比與 Gamma 調整** | `adjust_brightness_contrast` | 已實作 (Consolidated) | 整合式 MDI 預覽視窗 `BrightnessContrastGammaForm`，支援**線性模式**（Alpha 對比度 0.1~3.0、Beta 亮度 ±255，含等效 Gamma 動態算式推導）與**非線性 Gamma 冪律模式**（Gamma 0.1~10.0，滑桿 1.0 居中）。曲線預覽圖支援滑鼠點擊平移與拖曳互動操作。含「確定」輸出與「取消」、「重置預設值」按鈕。 |
 | **影像旋轉** | `rotate_image` | 已實作 (Consolidated) | 整合式 MDI 預覽與參數控制視窗 `RotateImageForm`，支援插值模式（最近鄰、雙線性）與映射模式。輸出視窗 `MSForm` 整合背景調整欄位，支援「透明」、「黑色」、「白色」、「中間值」、「自訂」背景顏色，並支援「融入原始影像」功能與即時直方圖連動更新。 |
+| **影像幾何縮放** | `scale_image` | 已實作 (Consolidated) | 支援最近鄰 (Nearest) 與雙線性 (Bilinear) 插值，引入分段線性滑桿映射將預設值 100% 定位於物理正中央。在 C++ 層實施嚴密座標 Clamp 與像素中心補償對齊，避免邊界溢位崩潰。 |
+| **手動門檻二值化** | `manual_threshold` | 已實作 (Consolidated) | 整合式 MDI 預覽與控制視窗 `ManualThresholdForm`，支援 0~255 閥值即時預覽與直方圖同步連動。針對彩色影像進行實質灰階檢查並提供 Alert 攔截阻擋，僅處理實質灰階影像，保障演算法正確性。 |

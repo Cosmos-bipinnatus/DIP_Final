@@ -43,6 +43,7 @@ namespace DIP
         private RadioButton radioBgGray;
         private RadioButton radioBgCustom;
         private Panel panelCustomColorPreview;
+        private static Color? lastCustomBgColor = null;
         private Color customBgColor = Color.FromArgb(240, 240, 240);
 
         private Label lblSizeInfo;
@@ -64,6 +65,11 @@ namespace DIP
         {
             this.mainForm = mainForm;
             this.originalBmp = originalBmp;
+
+            if (lastCustomBgColor.HasValue)
+            {
+                this.customBgColor = lastCustomBgColor.Value;
+            }
 
             CalculateOriginalMedians();
 
@@ -594,6 +600,10 @@ namespace DIP
 
         private void RadioBgColor_CheckedChanged(object sender, EventArgs e)
         {
+            if (radioBgCustom.Checked && !lastCustomBgColor.HasValue)
+            {
+                ChooseCustomColor();
+            }
             UpdatePreview();
         }
 
@@ -611,6 +621,7 @@ namespace DIP
                 if (cd.ShowDialog() == DialogResult.OK)
                 {
                     customBgColor = cd.Color;
+                    lastCustomBgColor = cd.Color; // Record history
                     panelCustomColorPreview.BackColor = customBgColor;
                     UpdatePreview();
                 }
