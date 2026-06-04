@@ -60,16 +60,16 @@ namespace DIP
 
         private void CopyItem_Click(object sender, EventArgs e)
         {
-            if (pictureBox1.Image != null)
+            if (pBitmap != null)
             {
-                DIPSample.CopyImageToClipboard(pictureBox1.Image);
+                DIPSample.CopyImageToClipboard(pBitmap);
                 MessageBox.Show("圖片已複製到剪貼簿 (Image copied to clipboard)", "訊息 (Info)", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
         private void SaveItem_Click(object sender, EventArgs e)
         {
-            if (pictureBox1.Image != null)
+            if (pBitmap != null)
             {
                 using (SaveFileDialog sfd = new SaveFileDialog())
                 {
@@ -83,7 +83,7 @@ namespace DIP
                         if (ext == ".bmp") format = ImageFormat.Bmp;
                         else if (ext == ".jpg" || ext == ".jpeg") format = ImageFormat.Jpeg;
                         
-                        pictureBox1.Image.Save(sfd.FileName, format);
+                        pBitmap.Save(sfd.FileName, format);
                     }
                 }
             }
@@ -333,73 +333,62 @@ namespace DIP
             // or opaque (Alpha = 255)
             bool makeBitmapTransparent = radioBgTransparent.Checked || !chkBlendBg.Checked;
 
+            // Dispose old pBitmap (if it is not the original one)
             if (pBitmap != originalTransparentBmp && pBitmap != null)
             {
                 pBitmap.Dispose();
+            }
+
+            // Dispose old pictureBox1.Image (if it is not the original one or pBitmap)
+            if (pictureBox1.Image != originalTransparentBmp && pictureBox1.Image != pBitmap && pictureBox1.Image != null)
+            {
+                pictureBox1.Image.Dispose();
             }
 
             if (makeBitmapTransparent)
             {
                 pBitmap = (Bitmap)originalTransparentBmp.Clone();
                 pictureBox1.Image = pBitmap;
-
-                if (radioBgTransparent.Checked)
-                {
-                    pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
-                    pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
-                    pictureBox1.BackColor = Color.Transparent;
-                }
-                else
-                {
-                    pictureBox1.BackgroundImage = null;
-                    pictureBox1.BackColor = bgCol;
-                }
             }
             else
             {
-                Color fillCol = radioBgTransparent.Checked ? Color.Black : bgCol;
-
                 Bitmap bakedBmp = new Bitmap(originalTransparentBmp.Width, originalTransparentBmp.Height, PixelFormat.Format32bppArgb);
                 using (Graphics g = Graphics.FromImage(bakedBmp))
                 {
-                    g.Clear(fillCol);
+                    g.Clear(bgCol);
                     g.DrawImage(originalTransparentBmp, 0, 0);
                 }
 
                 pBitmap = bakedBmp;
                 pictureBox1.Image = pBitmap;
-
-                if (radioBgTransparent.Checked)
-                {
-                    pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
-                    pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
-                    pictureBox1.BackColor = Color.Transparent;
-                }
-                else
-                {
-                    pictureBox1.BackgroundImage = null;
-                    pictureBox1.BackColor = SystemColors.Control;
-                }
             }
 
-            if (chkBlendBg.Checked)
+            // Apply consistent background display for both PictureBox and Form (outside image)
+            if (radioBgTransparent.Checked)
             {
-                if (radioBgTransparent.Checked)
-                {
-                    this.BackgroundImage = DIPSample.GetCheckerboardBitmap();
-                    this.BackgroundImageLayout = ImageLayout.Tile;
-                    this.BackColor = SystemColors.Control;
-                }
-                else
-                {
-                    this.BackgroundImage = null;
-                    this.BackColor = bgCol;
-                }
+                pictureBox1.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                pictureBox1.BackgroundImageLayout = ImageLayout.Tile;
+                pictureBox1.BackColor = Color.Transparent;
+
+                this.BackgroundImage = DIPSample.GetCheckerboardBitmap();
+                this.BackgroundImageLayout = ImageLayout.Tile;
+                this.BackColor = SystemColors.Control;
             }
             else
             {
+                pictureBox1.BackgroundImage = null;
                 this.BackgroundImage = null;
-                this.BackColor = SystemColors.Control;
+
+                if (!chkBlendBg.Checked)
+                {
+                    pictureBox1.BackColor = bgCol;
+                    this.BackColor = bgCol;
+                }
+                else
+                {
+                    pictureBox1.BackColor = SystemColors.Control;
+                    this.BackColor = SystemColors.Control;
+                }
             }
 
             DIPSample mainForm = this.MdiParent as DIPSample;

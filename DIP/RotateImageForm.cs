@@ -58,6 +58,11 @@ namespace DIP
 
         public int[] BackgroundMask { get; private set; }
 
+        public bool IsTransparentOrNotBlended()
+        {
+            return radioBgTransparent.Checked || !chkBlendBg.Checked;
+        }
+
         // Prevent recursive update from TrackBar <-> TextBox sync
         private bool isUpdating = false;
 
@@ -788,6 +793,8 @@ namespace DIP
             int bg_r, bg_g, bg_b, bg_a;
             GetBgColorRGBA(out bg_r, out bg_g, out bg_b, out bg_a);
 
+            int preview_a = bg_a;
+
             // Update PictureBox background color/image to match transparency settings
             if (radioBgTransparent.Checked)
             {
@@ -798,14 +805,21 @@ namespace DIP
             else
             {
                 pictureBox1.BackgroundImage = null;
-                pictureBox1.BackColor = Color.FromArgb(bg_r, bg_g, bg_b);
+                if (!chkBlendBg.Checked)
+                {
+                    pictureBox1.BackColor = Color.FromArgb(bg_r, bg_g, bg_b);
+                }
+                else
+                {
+                    pictureBox1.BackColor = SystemColors.Control;
+                }
             }
 
             unsafe
             {
                 fixed (int* f0 = fArray) fixed (int* g0 = gArray)
                 {
-                    DIPSample.rotate_image(f0, srcW, srcH, d, g0, newW, newH, angle, mode, bg_r, bg_g, bg_b, bg_a);
+                    DIPSample.rotate_image(f0, srcW, srcH, d, g0, newW, newH, angle, mode, bg_r, bg_g, bg_b, preview_a);
                 }
             }
 
