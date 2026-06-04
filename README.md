@@ -27,6 +27,16 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 
 以下為後端運算層所導出的關鍵函式結構，所有函式皆採用 `__declspec(dllexport) extern "C"` 宣告以進行 C# P/Invoke 調用。
 
+### 2.0 C++ 核心模組化設計與架構
+為了便於後續擴充、維護以及 AI 協同開發（避免巨大單一原始碼檔案），C++ 後端核心已進行模組化重構，將功能拆分為以下 5 個專職模組檔案（皆引用公用標頭檔 [image_lib.h](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/image_lib.h)）：
+1. **[color_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/color_ops.cpp)**：色彩與通道轉換相關功能（包括 `encode_gray`、`bit_plane_slice`）。
+2. **[intensity_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/intensity_ops.cpp)**：明暗調整與直方圖處理（包括 `adjust_brightness_contrast`、`calculate_histogram`、`histogram_equalization`）。
+3. **[geometry_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/geometry_ops.cpp)**：影像幾何旋轉與縮放變換（包括 `rotate_image`、`scale_image`）。
+4. **[threshold_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/threshold_ops.cpp)**：閾值分割與二值化運算（包括 `manual_threshold`、`otsu_threshold`）。
+5. **[filter_edge_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/filter_edge_ops.cpp)**：卷積濾波、邊緣檢測與圖形偵測（包括 `spatial_filter`、`detect_sobel`、`detect_canny`、`detect_lines_hough`、`detect_circles_hough`）。
+
+後續開發新功能時，請先將其分類並實作於對應的 cpp 模組中，並在 `image_lib.h` 中宣告導出介面。
+
 ### 2.1 影像灰階與位元面 (Grayscale & Bit-Plane Slicing)
 1. **影像轉灰階 (`encode_gray`)**
    * **功能:** 將 BGR 彩色影像以標準加權平均法轉換為灰階：$Y = 0.299R + 0.587G + 0.114B$。

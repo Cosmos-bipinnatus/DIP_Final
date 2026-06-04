@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="來源檔案">
@@ -32,7 +32,19 @@
     <ClCompile Include="pch.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
-    <ClCompile Include="dip_proc.cpp">
+    <ClCompile Include="color_ops.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="intensity_ops.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="geometry_ops.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="threshold_ops.cpp">
+      <Filter>來源檔案</Filter>
+    </ClCompile>
+    <ClCompile Include="filter_edge_ops.cpp">
       <Filter>來源檔案</Filter>
     </ClCompile>
   </ItemGroup>

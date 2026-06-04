@@ -8,7 +8,7 @@
 
 本專案採用 **混合型二層級架構**：
 * **前端 UI 層 (C# .NET Windows Forms):** 負責 MDI 多視窗管理、外部檔案讀寫、UI 控制元件（軌道條滑桿、下拉選單）、以及動態渲染右側直方圖側邊欄 (Sidebar)。
-* **後端運算層 (C++ Native DLL - `dip_proc.dll`):** 負責所有高運算量、像素級的影像處理演算法。透過 P/Invoke 將 C# 傳遞的像素指標直接進行高速處理，確保處理大圖也能即時預覽。
+* **後端運算層 (C++ Native DLL - `dip_proc.dll`):** 負責所有高運算量、像素級的影像處理演算法。原始碼已模組化拆分為五個專職檔案（`color_ops.cpp`、`intensity_ops.cpp`、`geometry_ops.cpp`、`threshold_ops.cpp`、`filter_edge_ops.cpp`）與公用標頭檔 `image_lib.h`。透過 P/Invoke 將 C# 傳遞的像素指標直接進行高速處理，確保處理大圖也能即時預覽。
 
 ### 🔄 資料流向與定址規範 (Memory Addressing)
 影像資料以一維整數陣列 `int[]` 進行雙向傳遞。定址公式採用 **Row-Major 行優先** 標準：

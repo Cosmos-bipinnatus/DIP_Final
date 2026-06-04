@@ -157,7 +157,11 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dip_proc.cpp" />
+    <ClCompile Include="color_ops.cpp" />
+    <ClCompile Include="intensity_ops.cpp" />
+    <ClCompile Include="geometry_ops.cpp" />
+    <ClCompile Include="threshold_ops.cpp" />
+    <ClCompile Include="filter_edge_ops.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
