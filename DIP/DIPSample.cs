@@ -67,6 +67,10 @@ namespace DIP
         private int[] currentHistDataB = new int[256];
         private int[] currentHistDataG = new int[256];
         private int[] currentHistDataR = new int[256];
+        private ToolTip customToolTip = new ToolTip();
+        private Timer hoverTimer = new Timer();
+        private ToolStripItem currentHoveredItem = null;
+        private string currentHoveredText = "";
 
         Bitmap NpBitmap;
         int w, h;
@@ -213,6 +217,78 @@ namespace DIP
             // Combined Brightness, Contrast & Gamma transform (Linear & Non-Linear)
             this.histogramEqualizationGammaValueToolStripMenuItem.Click += (s, e) => ApplyBrightnessContrastGamma();
             this.histogramEqualizationGammaValueToolStripMenuItem.Text = "亮度對比與 Gamma 調整 (線性與非線性)";
+
+            // Initialize Custom ToolTip and Timer for 1.5 seconds Hover
+            hoverTimer.Interval = 1500;
+            hoverTimer.Tick += HoverTimer_Tick;
+            customToolTip.AutoPopDelay = 32767; // set max delay
+
+            // Bind tooltips for sub-menus
+            BindTooltip(this.rGBtoGrayToolStripMenuItem, "採用 BT.601 標準公式 (Y = 0.299*R + 0.587*G + 0.114*B) 將 BGR 彩色影像轉換為單通道亮度灰階影像。");
+            BindTooltip(this.bitPlanesToolStripMenuItem, "將 8 位元灰階影像拆解為 8 個獨立的二進位位元平面，高位元平面包含主要結構，低位元平面包含細微雜訊。");
+            BindTooltip(this.showHistogramToolStripMenuItem, "切換顯示側邊欄統計圖表，即時呈現影像中藍、綠、紅或灰階通道的像素亮度分佈與均值、中位數、標準差。");
+            BindTooltip(this.histogramEqualizationLinearToolStripMenuItem, "計算累積機率分佈函數 (CDF) 以自動拉伸灰階範圍，顯著提升低對比影像的整體亮暗細節。");
+            BindTooltip(this.histogramEqualizationGammaValueToolStripMenuItem, "調整亮度與對比度，並支援非線性 Gamma 冪律變換，修正影像的感光曲線，支援預覽圖滑鼠平移拖曳操作。");
+            BindTooltip(this.rotationToolStripMenuItem, "支援最近鄰與雙線性插值，可自由設定映射模式、旋轉角度、背景填色及原圖融入，並防範邊界裁切問題。");
+            BindTooltip(this.nearestNeighborInterpolationToolStripMenuItem, "影像幾何縮放的最近鄰插值法，運算速度極快，但放大時邊緣會產生明顯的鋸齒與馬賽克感。");
+            BindTooltip(this.bilinearInterpolationToolStripMenuItem, "影像幾何縮放的雙線性插值法，透過鄰近 4 點像素的距離加權內插，放大影像邊緣平滑，細節較柔和。");
+            BindTooltip(this.manualThresholdToolStripMenuItem, "僅支援灰階影像，手動設定 0 到 255 的門檻值，將影像劃分為黑 (0) 與白 (255) 兩大區塊，具備即時預覽。");
+            BindTooltip(this.otsusMethodToolStripMenuItem, "僅支援灰階影像，透過最大類間變異數演算法自動尋找最佳分割閾值，精確分離前景與背景黑白交界。");
+
+            // Bind tooltips for top-level menu titles/headers
+            BindTooltip(this.fileToolStripMenuItem, "開啟與管理影像檔案，載入本機圖片以進行後續數位影像處理。");
+            BindTooltip(this.histogramToolStripMenuItem, "直方圖分析與處理，包含顯示色彩統計圖與影像對比直方圖等化。");
+            BindTooltip(this.interpolationToolStripMenuItem, "改變影像幾何尺寸與解析度，提供最近鄰插值與雙線性插值縮放演算法。");
+            BindTooltip(this.neighborhoodProcessingToolStripMenuItem, "鄰域卷積空間濾波器，包含平均模糊、高斯平滑、拉普拉斯銳化、LoG 邊緣增強及高提升濾波。");
+            BindTooltip(this.segmentationToolStripMenuItem, "將影像前景與背景分離，提供手動設定閾值二值化與大津法自適應最佳閥值分割。");
+            BindTooltip(this.edgeDetectionToolStripMenuItem, "分析影像亮度梯度的極值，提取物體邊緣輪廓，包含 Sobel 算子與高精度 Canny 演算法。");
+            BindTooltip(houghMenu, "利用參數空間投票機制，從二值化邊緣影像中提取直線或圓形等幾何圖形輪廓。");
+
+            // Locate and bind Basic Processing top-level menu (iPToolStripMenuItem is local in designer)
+            foreach (ToolStripItem item in this.menuStrip1.Items)
+            {
+                if (item.Text != null && item.Text.Contains("基本處理"))
+                {
+                    BindTooltip(item, "影像基礎亮度與位元處理，包含彩色轉灰階、位元平面切片及亮度與對比調整。");
+                    break;
+                }
+            }
+        }
+
+        private void BindTooltip(ToolStripItem item, string text)
+        {
+            if (item == null) return;
+            item.MouseEnter += (s, e) => {
+                hoverTimer.Stop();
+                customToolTip.Hide(menuStrip1);
+                currentHoveredItem = item;
+                currentHoveredText = text;
+                hoverTimer.Start();
+            };
+            item.MouseLeave += (s, e) => {
+                hoverTimer.Stop();
+                customToolTip.Hide(menuStrip1);
+                if (currentHoveredItem == item)
+                {
+                    currentHoveredItem = null;
+                    currentHoveredText = "";
+                }
+            };
+            item.Click += (s, e) => {
+                hoverTimer.Stop();
+                customToolTip.Hide(menuStrip1);
+            };
+        }
+
+        private void HoverTimer_Tick(object sender, EventArgs e)
+        {
+            hoverTimer.Stop();
+            if (currentHoveredItem != null && !string.IsNullOrEmpty(currentHoveredText))
+            {
+                Point cursorPoint = Cursor.Position;
+                Point relativePoint = menuStrip1.PointToClient(cursorPoint);
+                customToolTip.Show(currentHoveredText, menuStrip1, relativePoint.X + 15, relativePoint.Y + 15, 32767);
+            }
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -974,6 +1050,17 @@ namespace DIP
         {
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
+
+            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            {
+                MessageBox.Show(
+                    "大津法二值化功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
 
             Bitmap bmp = activeChild.pBitmap;
             int tempW = bmp.Width;
