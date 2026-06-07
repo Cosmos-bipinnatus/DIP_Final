@@ -29,7 +29,7 @@ namespace DIP
         public static unsafe extern void histogram_equalization(int* f, int w, int h, int d, int* g);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void spatial_filter(int* f, int w, int h, int d, int* g, double[] kernel, int kSize, double divisor, double offset);
+        public static unsafe extern void convolution_filter(int* f, int w, int h, int d, int* g, double[] kernel, int kSize, double divisor, double offset);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void scale_image(int* f, int w, int h, int d, int* g, int newW, int newH, int mode);
@@ -196,6 +196,11 @@ namespace DIP
                 btnHB.Click += (s, e) => ApplyFilter(4);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnHB);
                 BindTooltip(btnHB, "高提升濾波，透過原圖減去模糊影像生成細節遮罩，可按權重疊加回原圖以調整銳化強度。");
+
+                ToolStripMenuItem btnCustom = new ToolStripMenuItem("自訂 3x3 / 5x5 濾波器 (Custom Filter)...");
+                btnCustom.Click += (s, e) => ApplyCustomFilter();
+                this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnCustom);
+                BindTooltip(btnCustom, "自訂 3x3 或 5x5 的濾波器核心矩陣、除數與偏移量，對灰階影像進行鄰域卷積運算。");
             }
 
             // Dynamically add Sobel and Canny to Edge Detection menu
@@ -262,7 +267,7 @@ namespace DIP
             BindTooltip(this.fileToolStripMenuItem, "開啟與管理影像檔案，載入本機圖片以進行後續數位影像處理。");
             BindTooltip(this.histogramToolStripMenuItem, "直方圖分析與處理，包含顯示色彩統計圖與影像對比直方圖等化。");
             BindTooltip(this.interpolationToolStripMenuItem, "改變影像幾何尺寸與解析度，提供最近鄰插值與雙線性插值縮放演算法。");
-            BindTooltip(this.neighborhoodProcessingToolStripMenuItem, "鄰域卷積空間濾波器，包含平均模糊、高斯平滑、拉普拉斯銳化、LoG 邊緣增強及高提升濾波。");
+            BindTooltip(this.neighborhoodProcessingToolStripMenuItem, "鄰域卷積空間濾波器，包含平均模糊、高斯平滑、拉普拉斯銳化、LoG 邊緣增強、高提升濾波以及自訂 3x3 與 5x5 核心濾波。");
             BindTooltip(this.segmentationToolStripMenuItem, "將影像前景與背景分離，提供手動設定閾值二值化與大津法自適應最佳閥值分割。");
             BindTooltip(this.edgeDetectionToolStripMenuItem, "分析影像亮度梯度的極值，提取物體邊緣輪廓，包含 Sobel 算子與高精度 Canny 演算法。");
             BindTooltip(houghMenu, "利用參數空間投票機制，從二值化邊緣影像中提取直線或圓形等幾何圖形輪廓。");
@@ -1050,12 +1055,57 @@ namespace DIP
             {
                 fixed (int* f0 = fArray) fixed (int* g0 = gArray)
                 {
-                    spatial_filter(f0, tempW, tempH, d, g0, kernel, kSize, divisor, offset);
+                    convolution_filter(f0, tempW, tempH, d, g0, kernel, kSize, divisor, offset);
                 }
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
             ShowNewImage(newBmp, filterName);
+        }
+
+        private void ApplyCustomFilter()
+        {
+            MSForm activeChild = this.ActiveMdiChild as MSForm;
+            if (activeChild == null) return;
+
+            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            {
+                MessageBox.Show(
+                    "自訂濾波器功能僅支援灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
+            double[] kernel;
+            int kSize;
+            double divisor;
+            double offset;
+
+            if (ParamDialog.ShowCustomFilterDialog(out kernel, out kSize, out divisor, out offset))
+            {
+                Bitmap bmp = activeChild.pBitmap;
+                int tempW = bmp.Width;
+                int tempH = bmp.Height;
+                int d = 0;
+                PixelFormat pf = new PixelFormat();
+                ColorPalette pal = null;
+                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
+                int[] gArray = new int[tempW * tempH * d];
+
+                unsafe
+                {
+                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
+                    {
+                        convolution_filter(f0, tempW, tempH, d, g0, kernel, kSize, divisor, offset);
+                    }
+                }
+
+                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
+                ShowNewImage(newBmp, string.Format("自訂 {0}x{0} 濾波器", kSize));
+            }
         }
 
         private void ApplyScaling(int mode)

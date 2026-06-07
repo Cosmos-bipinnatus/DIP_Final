@@ -283,5 +283,135 @@ namespace DIP
                 return false;
             }
         }
+        // 7. Custom 3x3 / 5x5 Filter Dialog
+        public static bool ShowCustomFilterDialog(out double[] kernel, out int kSize, out double divisor, out double offset)
+        {
+            kernel = null;
+            kSize = 3;
+            divisor = 1.0;
+            offset = 0.0;
+
+            using (ParamDialog dlg = new ParamDialog())
+            {
+                dlg.Text = "自訂濾波器 (Custom Filter)";
+                dlg.ClientSize = new Size(450, 310);
+
+                Label lblInstructions = new Label { Text = "選擇核心大小並輸入係數 (Select kernel size & enter coefficients):", Location = new Point(20, 15), AutoSize = true, ForeColor = Color.Black };
+                RadioButton rad3x3 = new RadioButton { Text = "3x3 核心", Checked = true, Location = new Point(20, 40), Size = new Size(100, 24), ForeColor = Color.Black };
+                RadioButton rad5x5 = new RadioButton { Text = "5x5 核心", Location = new Point(130, 40), Size = new Size(100, 24), ForeColor = Color.Black };
+
+                TextBox[,] txtGrid = new TextBox[5, 5];
+                int startX = 20, startY = 70;
+                int boxW = 40, boxH = 23;
+                int gapX = 8, gapY = 8;
+
+                for (int r = 0; r < 5; r++)
+                {
+                    for (int c = 0; c < 5; c++)
+                    {
+                        TextBox tb = new TextBox
+                        {
+                            Size = new Size(boxW, boxH),
+                            Location = new Point(startX + c * (boxW + gapX), startY + r * (boxH + gapY)),
+                            Text = (r == 2 && c == 2) ? "1" : "0",
+                            TextAlign = HorizontalAlignment.Center,
+                            BackColor = Color.White,
+                            ForeColor = Color.Black
+                        };
+                        txtGrid[r, c] = tb;
+                        dlg.Controls.Add(tb);
+                    }
+                }
+
+                Label lblDivisor = new Label { Text = "除數 (Divisor):", Location = new Point(280, 70), AutoSize = true, ForeColor = Color.Black };
+                TextBox txtDivisor = new TextBox { Text = "1.0", Location = new Point(280, 90), Size = new Size(130, 23), BackColor = Color.White, ForeColor = Color.Black };
+
+                Label lblOffset = new Label { Text = "偏移量 (Offset):", Location = new Point(280, 130), AutoSize = true, ForeColor = Color.Black };
+                TextBox txtOffset = new TextBox { Text = "0.0", Location = new Point(280, 150), Size = new Size(130, 23), BackColor = Color.White, ForeColor = Color.Black };
+
+                Button btnOk = new Button { Text = "確定 (OK)", Location = new Point(220, 250), Size = new Size(90, 30), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(30, 144, 255), ForeColor = Color.White };
+                Button btnCancel = new Button { Text = "取消 (Cancel)", DialogResult = DialogResult.Cancel, Location = new Point(325, 250), Size = new Size(90, 30), FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderColor = Color.FromArgb(200, 200, 200) }, ForeColor = Color.FromArgb(64, 64, 64) };
+
+                Action updateGridVisibility = () =>
+                {
+                    bool is3 = rad3x3.Checked;
+                    for (int r = 0; r < 5; r++)
+                    {
+                        for (int c = 0; c < 5; c++)
+                        {
+                            bool visible = !is3 || (r >= 1 && r <= 3 && c >= 1 && c <= 3);
+                            txtGrid[r, c].Visible = visible;
+                        }
+                    }
+                };
+
+                rad3x3.CheckedChanged += (s, e) => updateGridVisibility();
+                rad5x5.CheckedChanged += (s, e) => updateGridVisibility();
+                updateGridVisibility();
+
+                double[] parsedKernel = null;
+                int parsedSize = 3;
+                double parsedDiv = 1.0;
+                double parsedOff = 0.0;
+
+                btnOk.Click += (s, e) =>
+                {
+                    if (!double.TryParse(txtDivisor.Text, out parsedDiv))
+                    {
+                        MessageBox.Show("請輸入正確的除數數值！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    if (parsedDiv == 0.0)
+                    {
+                        MessageBox.Show("除數不可為 0！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (!double.TryParse(txtOffset.Text, out parsedOff))
+                    {
+                        MessageBox.Show("請輸入正確的偏移量數值！", "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    parsedSize = rad3x3.Checked ? 3 : 5;
+                    parsedKernel = new double[parsedSize * parsedSize];
+                    int count = 0;
+
+                    for (int r = 0; r < 5; r++)
+                    {
+                        for (int c = 0; c < 5; c++)
+                        {
+                            if (parsedSize == 3 && (r < 1 || r > 3 || c < 1 || c > 3))
+                            {
+                                continue;
+                            }
+                            double cellVal;
+                            if (!double.TryParse(txtGrid[r, c].Text, out cellVal))
+                            {
+                                MessageBox.Show(string.Format("核心矩陣第 {0} 行第 {1} 列輸入有誤，請輸入數值！", r + 1, c + 1), "輸入錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return;
+                            }
+                            parsedKernel[count++] = cellVal;
+                        }
+                    }
+
+                    dlg.DialogResult = DialogResult.OK;
+                };
+
+                dlg.Controls.AddRange(new Control[] { lblInstructions, rad3x3, rad5x5, lblDivisor, txtDivisor, lblOffset, txtOffset, btnOk, btnCancel });
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCancel;
+
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    kernel = parsedKernel;
+                    kSize = parsedSize;
+                    divisor = parsedDiv;
+                    offset = parsedOff;
+                    return true;
+                }
+                return false;
+            }
+        }
     }
 }

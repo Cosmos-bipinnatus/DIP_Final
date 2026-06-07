@@ -63,19 +63,51 @@ inline void draw_circle(int *g, int w, int h, int d, int xc, int yc, int r, int 
 
 extern "C" {
 
-__declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g,
-                                          double *kernel, int kSize,
-                                          double divisor, double offset) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
-  DIPPROC_UNUSED(kernel);
-  DIPPROC_UNUSED(kSize);
-  DIPPROC_UNUSED(divisor);
-  DIPPROC_UNUSED(offset);
+__declspec(dllexport) void convolution_filter(int *f, int w, int h, int d, int *g,
+                                              double *kernel, int kSize,
+                                              double divisor, double offset) {
+  if (f == nullptr || g == nullptr || kernel == nullptr || w <= 0 || h <= 0 || d <= 0 || kSize <= 0) {
+    return;
+  }
+
+  int kHalf = kSize / 2;
+  double div = (divisor == 0.0) ? 1.0 : divisor;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int idx = (y * w + x) * d;
+
+      if (d == 4) {
+        g[idx + 3] = f[idx + 3];
+      }
+
+      int channels_to_filter = (d >= 3) ? 3 : d;
+      for (int c = 0; c < channels_to_filter; c++) {
+        double sum = 0.0;
+        for (int ki = -kHalf; ki <= kHalf; ki++) {
+          int ny = y + ki;
+          for (int kj = -kHalf; kj <= kHalf; kj++) {
+            int nx = x + kj;
+
+            double pixel_val = 0.0;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+              pixel_val = f[(ny * w + nx) * d + c];
+            }
+
+            sum += pixel_val * kernel[(ki + kHalf) * kSize + (kj + kHalf)];
+          }
+        }
+
+        double val = sum / div + offset;
+        if (val < 0.0) val = 0.0;
+        if (val > 255.0) val = 255.0;
+
+        g[idx + c] = (int)(val + 0.5);
+      }
+    }
+  }
 }
+
 
 __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g) {
   if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0) {
@@ -83,56 +115,63 @@ __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g) {
   }
 
   int total_pixels = w * h;
-  unsigned char *gray = new unsigned char[total_pixels];
+  int *temp_gray = new int[total_pixels * d];
 
-  // Convert to grayscale if needed
+  // Convert input to grayscale temp_gray first
   for (int i = 0; i < total_pixels; i++) {
+    int idx = i * d;
     if (d == 1) {
       int v = f[i];
-      if (v < 0)
-        v = 0;
-      if (v > 255)
-        v = 255;
-      gray[i] = (unsigned char)v;
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      temp_gray[i] = v;
     } else {
-      int idx = i * d;
       double b = f[idx + 0];
       double gval = f[idx + 1];
       double r = f[idx + 2];
       int gray_val = (int)(r * 0.299 + gval * 0.587 + b * 0.114 + 0.5);
-      if (gray_val < 0)
-        gray_val = 0;
-      if (gray_val > 255)
-        gray_val = 255;
-      gray[i] = (unsigned char)gray_val;
+      if (gray_val < 0) gray_val = 0;
+      if (gray_val > 255) gray_val = 255;
+      temp_gray[idx + 0] = gray_val;
+      temp_gray[idx + 1] = gray_val;
+      temp_gray[idx + 2] = gray_val;
+      if (d == 4) {
+        temp_gray[idx + 3] = f[idx + 3];
+      }
     }
   }
 
-  // Sobel operator (simple magnitude = |gx| + |gy|)
-  for (int y = 1; y < h - 1; y++) {
-    for (int x = 1; x < w - 1; x++) {
-      int idx = y * w + x;
-      int gx = -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)] -
-               2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)] -
-               gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+  int *tempGx = new int[total_pixels * d];
+  int *tempGy = new int[total_pixels * d];
 
-      int gy = -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] -
-               gray[(y - 1) * w + (x + 1)] + gray[(y + 1) * w + (x - 1)] +
-               2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+  double kernelX[9] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+  double kernelY[9] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
 
+  // Call convolution_filter (reusing the custom filter core)
+  convolution_filter(temp_gray, w, h, d, tempGx, kernelX, 3, 1.0, 0.0);
+  convolution_filter(temp_gray, w, h, d, tempGy, kernelY, 3, 1.0, 0.0);
+
+  // Combine X and Y gradients
+  for (int i = 0; i < total_pixels; i++) {
+    int idx = i * d;
+    if (d == 1) {
+      int gx = tempGx[i];
+      int gy = tempGy[i];
       int mag = abs(gx) + abs(gy);
-      if (mag > 255)
-        mag = 255;
-      if (mag < 0)
-        mag = 0;
-
-      if (d == 1) {
-        g[idx] = mag;
-      } else {
-        int outIdx = idx * d;
-        g[outIdx + 0] = mag; // B
-        g[outIdx + 1] = mag; // G
-        g[outIdx + 2] = mag; // R
+      if (mag > 255) mag = 255;
+      if (mag < 0) mag = 0;
+      g[i] = mag;
+    } else {
+      int gx = tempGx[idx + 0];
+      int gy = tempGy[idx + 0];
+      int mag = abs(gx) + abs(gy);
+      if (mag > 255) mag = 255;
+      if (mag < 0) mag = 0;
+      g[idx + 0] = mag;
+      g[idx + 1] = mag;
+      g[idx + 2] = mag;
+      if (d == 4) {
+        g[idx + 3] = f[idx + 3]; // Preserve alpha
       }
     }
   }
@@ -165,8 +204,11 @@ __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g) {
     }
   }
 
-  delete[] gray;
+  delete[] temp_gray;
+  delete[] tempGx;
+  delete[] tempGy;
 }
+
 
 __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
                                         double low_threshold,
@@ -176,80 +218,62 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
   }
 
   int total_pixels = w * h;
-  unsigned char *gray = new unsigned char[total_pixels];
+  int *temp_gray = new int[total_pixels * d];
 
-  // 1. 轉為灰階 (與你的 Sobel 完全相同)
+  // 1. Convert to Grayscale
   for (int i = 0; i < total_pixels; i++) {
+    int idx = i * d;
     if (d == 1) {
       int v = f[i];
-      if (v < 0)
-        v = 0;
-      if (v > 255)
-        v = 255;
-      gray[i] = (unsigned char)v;
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      temp_gray[i] = v;
     } else {
-      int idx = i * d;
       double b = f[idx + 0];
       double gval = f[idx + 1];
       double r = f[idx + 2];
       int gray_val = (int)(r * 0.299 + gval * 0.587 + b * 0.114 + 0.5);
-      if (gray_val < 0)
-        gray_val = 0;
-      if (gray_val > 255)
-        gray_val = 255;
-      gray[i] = (unsigned char)gray_val;
+      if (gray_val < 0) gray_val = 0;
+      if (gray_val > 255) gray_val = 255;
+      temp_gray[idx + 0] = gray_val;
+      temp_gray[idx + 1] = gray_val;
+      temp_gray[idx + 2] = gray_val;
+      if (d == 4) {
+        temp_gray[idx + 3] = f[idx + 3];
+      }
     }
   }
 
-  // 分配 Canny 專用的內部暫存空間
-  unsigned char *blurred = new unsigned char[total_pixels];
+  // Allocate Canny internal buffers
   double *grad_mag = new double[total_pixels];
-  double *grad_dir = new double[total_pixels]; // 儲存角度 (弳度)
+  double *grad_dir = new double[total_pixels];
   unsigned char *nms = new unsigned char[total_pixels];
 
-  // 2. 高斯濾波 (Gaussian Blur 3x3) 降噪
-  // 權重矩陣: [1 2 1; 2 4 2; 1 2 1] / 16
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      if (y == 0 || y == h - 1 || x == 0 || x == w - 1) {
-        blurred[y * w + x] = gray[y * w + x];
-        continue;
-      }
-      int sum = gray[(y - 1) * w + (x - 1)] * 1 + gray[(y - 1) * w + x] * 2 +
-                gray[(y - 1) * w + (x + 1)] * 1 + gray[y * w + (x - 1)] * 2 +
-                gray[y * w + x] * 4 + gray[y * w + (x + 1)] * 2 +
-                gray[(y + 1) * w + (x - 1)] * 1 + gray[(y + 1) * w + x] * 2 +
-                gray[(y + 1) * w + (x + 1)] * 1;
-      blurred[y * w + x] = (unsigned char)(sum / 16);
-    }
-  }
+  // 2. Gaussian Blur 3x3 using convolution_filter
+  int *temp_blurred = new int[total_pixels * d];
+  double gaussKernel[9] = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+  convolution_filter(temp_gray, w, h, d, temp_blurred, gaussKernel, 3, 16.0, 0.0);
 
-  // 3. 計算 Sobel 梯度大小與方向
-  // 初始化邊緣為 0
+  // 3. Sobel Gradients using convolution_filter
+  int *tempGx = new int[total_pixels * d];
+  int *tempGy = new int[total_pixels * d];
+  double kernelX[9] = { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+  double kernelY[9] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
+
+  convolution_filter(temp_blurred, w, h, d, tempGx, kernelX, 3, 1.0, 0.0);
+  convolution_filter(temp_blurred, w, h, d, tempGy, kernelY, 3, 1.0, 0.0);
+
+  // Compute magnitude and direction
   for (int i = 0; i < total_pixels; i++) {
-    grad_mag[i] = 0.0;
-    grad_dir[i] = 0.0;
+    int idx = i * d;
+    double gx = tempGx[idx];
+    double gy = tempGy[idx];
+    grad_mag[i] = std::sqrt(gx * gx + gy * gy);
+    grad_dir[i] = std::atan2(gy, gx);
     nms[i] = 0;
   }
 
-  for (int y = 1; y < h - 1; y++) {
-    for (int x = 1; x < w - 1; x++) {
-      int idx = y * w + x;
-      int gx = -blurred[(y - 1) * w + (x - 1)] +
-               blurred[(y - 1) * w + (x + 1)] - 2 * blurred[y * w + (x - 1)] +
-               2 * blurred[y * w + (x + 1)] - blurred[(y + 1) * w + (x - 1)] +
-               blurred[(y + 1) * w + (x + 1)];
-
-      int gy = -blurred[(y - 1) * w + (x - 1)] - 2 * blurred[(y - 1) * w + x] -
-               blurred[(y - 1) * w + (x + 1)] + blurred[(y + 1) * w + (x - 1)] +
-               2 * blurred[(y + 1) * w + x] + blurred[(y + 1) * w + (x + 1)];
-
-      grad_mag[idx] = std::sqrt(gx * gx + gy * gy);
-      grad_dir[idx] = std::atan2(gy, gx); // 範圍 -PI 到 PI
-    }
-  }
-
-  // 4. 非極大值抑制 (NMS) - 邊緣削薄
+  // 4. Non-Maximum Suppression (NMS)
   for (int y = 1; y < h - 1; y++) {
     for (int x = 1; x < w - 1; x++) {
       int idx = y * w + x;
@@ -257,7 +281,6 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
       if (mag == 0)
         continue;
 
-      // 將角度轉換為 0, 45, 90, 135 四個方向
       double angle = grad_dir[idx] * 180.0 / 3.141592653589793;
       if (angle < 0)
         angle += 180.0;
@@ -265,24 +288,19 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
       double mag1 = 0, mag2 = 0;
 
       if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180)) {
-        // 水平方向 (檢查左右像素)
         mag1 = grad_mag[y * w + (x - 1)];
         mag2 = grad_mag[y * w + (x + 1)];
       } else if (angle >= 22.5 && angle < 67.5) {
-        // 45度對角線 (檢查右上、左下)
         mag1 = grad_mag[(y - 1) * w + (x + 1)];
         mag2 = grad_mag[(y + 1) * w + (x - 1)];
       } else if (angle >= 67.5 && angle < 112.5) {
-        // 垂直方向 (檢查上下像素)
         mag1 = grad_mag[(y - 1) * w + x];
         mag2 = grad_mag[(y + 1) * w + x];
       } else if (angle >= 112.5 && angle < 157.5) {
-        // 135度對角線 (檢查左上、右下)
         mag1 = grad_mag[(y - 1) * w + (x - 1)];
         mag2 = grad_mag[(y + 1) * w + (x + 1)];
       }
 
-      // 只有當自己是區域內最大值時才保留
       if (mag >= mag1 && mag >= mag2) {
         nms[idx] = (mag > 255) ? 255 : (unsigned char)mag;
       } else {
@@ -291,25 +309,22 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
     }
   }
 
-  // 5. 雙門檻值與滯後邊緣追蹤 (Double Threshold & Hysteresis)
-  // 定義狀態：0 = 沒邊緣, 1 = 弱邊緣(待確認), 2 = 強邊緣
+  // 5. Double Threshold & Hysteresis
   unsigned char *edge_status = new unsigned char[total_pixels];
-  int *stack = new int[total_pixels]; // 用陣列模擬實作堆疊(Stack)，避免遞迴造成
-                                      // Stack Overflow
+  int *stack = new int[total_pixels];
   int stack_top = 0;
 
   for (int i = 0; i < total_pixels; i++) {
     if (nms[i] >= high_threshold) {
-      edge_status[i] = 2;     // 強邊緣
-      stack[stack_top++] = i; // 將強邊緣座標壓入堆疊
+      edge_status[i] = 2;
+      stack[stack_top++] = i;
     } else if (nms[i] >= low_threshold) {
-      edge_status[i] = 1; // 弱邊緣
+      edge_status[i] = 1;
     } else {
       edge_status[i] = 0;
     }
   }
 
-  // 連通性追蹤：透過強邊緣延伸去救援鄰近的弱邊緣
   int dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
   int dy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
 
@@ -324,7 +339,6 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
 
       if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
         int neighbor_idx = ny * w + nx;
-        // 如果鄰居是弱邊緣，它被認可升格為強邊緣，並繼續向外追蹤
         if (edge_status[neighbor_idx] == 1) {
           edge_status[neighbor_idx] = 2;
           stack[stack_top++] = neighbor_idx;
@@ -333,37 +347,35 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
     }
   }
 
-  // 6. 輸出結果與邊緣清理 (對齊你的輸出格式)
+  // 6. Write final edges to g
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       int idx = y * w + x;
-
-      // 處理邊界或是未被救援成功的弱邊緣，一律設為 0
       int final_val = 0;
       if (y > 0 && y < h - 1 && x > 0 && x < w - 1) {
         if (edge_status[idx] == 2) {
-          final_val = 255; // 輸出的 Canny 邊緣通常是純白(255)
+          final_val = 255;
         }
       }
 
-      // 寫入最終輸出陣列 g
       if (d == 1) {
         g[idx] = final_val;
       } else {
         int outIdx = idx * d;
-        g[outIdx + 0] = final_val; // B
-        g[outIdx + 1] = final_val; // G
-        g[outIdx + 2] = final_val; // R
-        // 如果有 Alpha 通道 (d == 4)，保留原本的值
+        g[outIdx + 0] = final_val;
+        g[outIdx + 1] = final_val;
+        g[outIdx + 2] = final_val;
         if (d == 4)
           g[outIdx + 3] = f[outIdx + 3];
       }
     }
   }
 
-  // 7. 釋放記憶體，防止記憶體洩漏 (Memory Leak)
-  delete[] gray;
-  delete[] blurred;
+  // 7. Cleanup
+  delete[] temp_gray;
+  delete[] temp_blurred;
+  delete[] tempGx;
+  delete[] tempGy;
   delete[] grad_mag;
   delete[] grad_dir;
   delete[] nms;

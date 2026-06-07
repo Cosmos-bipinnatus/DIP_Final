@@ -33,7 +33,7 @@ $$\text{Index} = (y \times W + x) \times d + c$$
 2. **[intensity_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/intensity_ops.cpp)**：明暗調整與直方圖處理（包括 `adjust_brightness_contrast`、`calculate_histogram`、`histogram_equalization`）。
 3. **[geometry_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/geometry_ops.cpp)**：影像幾何旋轉與縮放變換（包括 `rotate_image`、`scale_image`）。
 4. **[threshold_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/threshold_ops.cpp)**：閾值分割與二值化運算（包括 `manual_threshold`、`otsu_threshold`）。
-5. **[filter_edge_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/filter_edge_ops.cpp)**：卷積濾波、邊緣檢測與圖形偵測（包括 `spatial_filter`、`detect_sobel`、`detect_canny`、`detect_lines_hough`、`detect_circles_hough`）。
+5. **[filter_edge_ops.cpp](file:///c:/Users/user/Documents/Projects/DIP_Final/DIP_proc/filter_edge_ops.cpp)**：卷積濾波、邊緣檢測與圖形偵測（包括 `convolution_filter`、`detect_sobel`、`detect_canny`、`detect_lines_hough`、`detect_circles_hough`）。
 
 後續開發新功能時，請先將其分類並實作於對應的 cpp 模組中，並在 `image_lib.h` 中宣告導出介面。
 
@@ -86,13 +86,24 @@ $$\text{Index} = (y \times W + x) \times d + c$$
      * `int d`: 深度通道數（`1` 或 `3`）
      * `int* g`: 輸出等化後影像陣列指標
 
-### 2.4 空間濾波器與邊界補零 (`spatial_filter`)
-* **功能:** 執行通用 2D 卷積空間濾波，邊界處理統一採用**補零邊界 (Zero Padding)**。
+### 2.4 二維卷積空間濾波與自訂濾波器 (`convolution_filter`)
+* **功能:** 執行通用二維卷積空間濾波，邊界處理統一採用**補零邊界 (Zero Padding)**（3x3 核心向外補 1 層 0，5x5 核心向外補 2 層 0）。支援 BGR、BGRA 與單通道灰階影像卷積（Alpha 通道直接複製）。
 * **參數:**
-  * `double* kernel`: 扁平化的一維雙精度浮點數濾波核心（如 3x3 核心大小為 9；5x5 核心大小為 25）
-  * `int kSize`: 核心邊長（通常為 3 或 5）
-  * `double divisor`: 權重除數（如均值平滑為 `9.0`，高斯平滑為 `16.0`）
-  * `double offset`: 亮度偏移值（LoG 濾波可設為 `128.0` 以顯示負值邊緣）
+  * `double* kernel`: 扁平化的一維雙精度浮點數濾波核心（如 3x3 核心大小為 9；5x5 核心大小為 25）。
+  * `int kSize`: 核心邊長（通常為 3 或 5）。
+  * `double divisor`: 權重除數（如均值平滑為 9.0，高斯平滑為 16.0）。
+  * `double offset`: 亮度偏移值（LoG 濾波可設為 128.0 以顯示負值邊緣）。
+* **自訂 3x3 / 5x5 濾波器特色:**
+  * **灰階安全檢查 (ALERT 攔截)**: C# 前端呼叫前會先檢查影像內容是否為實質灰階。若為彩色影像則跳出警告阻擋，以確保資料格式正確。
+  * **動態網格 UI 佈局**: 在對話框中可以動態選擇「3x3 核心」或「5x5 核心」。切換時，輸入數值網格會動態展開或隱藏，且邊界對齊並適配表單邊框，防止視窗控制項超出頁面。預設為恆等映射（中心點為 1，其餘為 0）。
+  * **核心演算法重構與調用**: C++ 核心模組中，其餘邊緣偵測濾波器（如 Sobel、Canny）的高斯模糊與一階微分梯度計算步驟，皆已重構為直接調用通用卷積函式 `convolution_filter`，提高複用性。
+* **內置預設空間濾波器規格**:
+  1. **平均濾波 3x3**: 係數全為 1，除數 = 9.0，偏移量 = 0.0。平滑像素灰階差，用於模糊降噪。
+  2. **高斯濾波 3x3**: 核心為 [1 2 1; 2 4 2; 1 2 1]，除數 = 16.0，偏移量 = 0.0。基於二維正態分佈降噪，邊緣保留好。
+  3. **拉普拉斯銳化 3x3**: 核心為 [-1 -1 -1; -1 8 -1; -1 -1 -1]，除數 = 1.0，偏移量 = 0.0。利用二階微分偵測影像亮度突變以增強邊緣細節。
+  4. **高斯-拉普拉斯 5x5 (LoG)**: 核心為 5x5 標準 LoG 模板，除數 = 1.0，偏移量 = 128.0。結合高斯平滑與拉普拉斯差分以抑制噪點干擾。
+  5. **反銳化遮罩與高提升濾波**: 根據使用者輸入的比例 A (預設 1.2)，動態計算 3x3 合成核心（中心 = 8 + (A-1)*9，其餘 = -1），除數 = 1.0，偏移量 = 0.0。相減出細節遮罩並按權重疊加回原圖。
+
 
 ### 2.5 幾何縮放與反向映射旋轉 (Geometry Transformations)
 1. **影像縮放 (`scale_image`)**
@@ -325,7 +336,7 @@ git push origin main
 | **位元平面切片** <br>(`bit_plane_slice`) | 8-bit 灰階影像（包含專門設計的位元測試圖） | `ISample02/Bitplanes.bmp` <br> `ISample02/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證 0~7 位元面的二值化/原始權重提取。`Bitplanes.bmp` 的色塊在特定 bit 會有規則的黑白條紋與區塊，是極佳的直觀測試圖。彩色圖應觸發 UI 攔截警示。 |
 | **亮度與對比調整** <br>(`adjust_brightness_contrast`) | 低對比度、亮度不均勻的影像，或曝光不足影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` | 測試 $\alpha$（對比）與 $\beta$（亮度）調整。特別是低對比度的月球和 pout 影像，能在此演算法調整後呈現更清晰的細節。 |
 | **直方圖計算與等化** <br>(`calculate_histogram`<br>`histogram_equalization`) | 直方圖分佈窄（低對比）的灰階或彩色影像 | `ISample00/blurry_moon.tif` <br> `ISample00/pout.tif` <br> `ISample01/Lena256.bmp` <br> `ISample02/cameraman.bmp` | 驗證等化後能拉伸直方圖，使 CDF 分佈均勻。右側 Sidebar 在切換影像時應即時繪製對應通道之直方圖。 |
-| **空間濾波器** <br>(`spatial_filter`) | 1. 含噪影像 (椒鹽或高斯雜訊) <br> 2. 模糊或需銳化的影像 | **平滑/降噪：** `ISample01/Lena256_salt.bmp` (椒鹽雜訊), `ISample01/Pepper256.BMP` <br> **銳化/邊緣：** `ISample02/cameraman.bmp` | 驗證均值/高斯濾波器的去噪效果，以及拉普拉斯/LoG 核心的銳化邊緣提取。同時需驗證邊界處理為 Zero Padding，觀察影像邊緣是否會變黑或有平滑過渡。 |
+| **自訂與空間濾波器** <br>(`convolution_filter`) | 1. 含噪影像 (椒鹽或高斯雜訊) <br> 2. 模糊或需銳化的影像 <br> 3. 自訂濾波核心需求 | **平滑/降噪：** `ISample01/Lena256_salt.bmp` (椒鹽雜訊), `ISample01/Pepper256.BMP` <br> **銳化/邊緣：** `ISample02/cameraman.bmp` | 驗證均值/高斯濾波器的去噪效果，以及拉普拉斯/LoG 核心的銳化邊緣提取。同時需驗證邊界處理為 Zero Padding（邊界補 1~2 層 0），觀察影像邊緣是否有平滑過渡。並驗證自訂 3x3 與 5x5 核心、除數、偏移量的濾波效果與彩色影像 Alert 攔截。 |
 | **幾何縮放** <br>(`scale_image`) | 具有規律、高頻條紋或細緻輪廓的影像 | `ISample01/h.BMP` (水平) <br> `ISample01/v.BMP` (垂直) <br> `ISample01/d.BMP` (對角) <br> `ISample02/cameraman.bmp` | 比對「最近鄰插值」產生的鋸齒狀 (Aliasing) 效果與「雙線性插值」的平滑插值效果。 |
 | **幾何旋轉** <br>(`rotate_image`) | 具有格狀或條紋之影像，或具明顯方向性的影像 | `ISample01/h.BMP` <br> `ISample01/v.BMP` <br> `ISample01/d.BMP` <br> `ISample02/cameraman.bmp` | 驗證自動畫布擴展功能（影像旋轉不被切除），以及背景是否以黑色 (0) 補零填滿。同時比對兩種插值法的邊緣細緻度。 |
 | **閾值分割** <br>(`manual_threshold`<br>`otsu_threshold`) | 前景與背景有強烈對比且直方圖具雙峰特性的影像 | `ISample00/rice.bmp` (黑底白米) <br> `ISample00/bacteria.bmp` (細菌) <br> `ISample00/coins.tif` (硬幣) | 驗證手動閥值 $T$ 切割的效果，以及 Otsu 自動閥值演算法是否能精準找到黑白交界的最優閥值。 |

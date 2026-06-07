@@ -21,7 +21,7 @@ extern "C" {
     __declspec(dllexport) void otsu_threshold(int *f, int w, int h, int d, int *g);
 
     // Filters and Edge/Line Detection
-    __declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g, double *kernel, int kSize, double divisor, double offset);
+    __declspec(dllexport) void convolution_filter(int *f, int w, int h, int d, int *g, double *kernel, int kSize, double divisor, double offset);
     __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g);
     __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g, double lowThresh, double highThresh);
     __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d, int *g, int houghThreshold, int lineR, int lineG, int lineB);
