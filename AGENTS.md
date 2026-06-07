@@ -79,7 +79,8 @@
 | **大津法二值化** | `otsu_threshold` | 已實作 (Consolidated) | 自動最佳門檻二值化演算法，採用最大類間變異數公式計算最佳閾值。支援實質灰階影像，已於 C# 前端實作彩色影像 ALERT 攔截。 |
 | **霍夫直線偵測** | `detect_lines_hough` | 已實作 (Consolidated) | 整合式 MDI 預覽與控制項視窗 `HoughLineForm`，支援累加器門檻值即時預覽與直方圖連動。已修正支援 1bpp, 4bpp, 16bpp 等非位元組對齊點陣圖格式（於 `dyn_bmp2array` 階段進行安全 Format24bppRgb 轉換），杜絕記憶體越界與 Access Violation 崩潰。 |
 | **Sobel 邊緣偵測** | `detect_sobel` | 已實作 (Consolidated) | 支援單通道灰階與三通道 BGR 自動灰階化運算。已修正預編譯標頭檔 `#include` 順序問題，移除了多餘的輸入至輸出全圖拷貝，提升大圖處理時的快取效能，並完美落實 $3 \times 3$ 卷積最外圈 1 像素的零邊界防護 (Zero Padding) 安全處理。 |
-| **詳細技術知識文件** | `docs.md` | 已建立 | 詳盡記載 11 個已完成演算法之詳細數學原理、接口參數與 C++ 底層查找表 (LUT) 最佳化等實作細節，全以 ASCII 純文字公式表示。 |
+| **Canny 邊緣偵測** | `detect_canny` | 已實作 (Consolidated) | 整合式 MDI 預覽與控制項視窗 `CannyForm`，支援低、高雙門檻滑桿 (0~255) 即時調整與直方圖連動。實施實質灰階影像檢測與二值化邊緣輸出。已修正預編譯標頭及中文註解檔案編碼問題。 |
+| **詳細技術知識文件** | `docs.md` | 已建立 | 詳盡記載 12 個已完成演算法之詳細數學原理、接口參數與 C++ 底層查找表 (LUT) 最佳化等實作細節，全以 ASCII 純文字公式表示。 |
 | **功能與選單標題貼士** | `BindTooltip` | 已實作 | 滑鼠懸停 1.5 秒自動顯示各項核心演算法技術說明或選單分類簡介貼士，無超時自動關閉，滑鼠移開或點選時即刻隱藏。覆蓋 10 個核心選項及 9 個選單標題。 |
 | **C++ 核心模組化重構** | 5個模組C++原始檔 | 已實作 (Breaking Change) | 將原本巨大且單一的 `dip_proc.cpp` 拆分為：`color_ops.cpp` (色彩)、`intensity_ops.cpp` (明暗與直方圖)、`geometry_ops.cpp` (幾何轉換)、`threshold_ops.cpp` (閾值二值化) 及 `filter_edge_ops.cpp` (濾波邊緣與霍夫) 五個專一原始檔，藉由 `image_lib.h` 共用標頭匯出。 |
 

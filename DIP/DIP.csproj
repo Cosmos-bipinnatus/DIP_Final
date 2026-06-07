@@ -109,6 +109,9 @@
     <Compile Include="ManualThresholdForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CannyForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="HoughLineForm.cs">
       <SubType>Form</SubType>
     </Compile>

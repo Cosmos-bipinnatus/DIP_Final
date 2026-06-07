@@ -510,6 +510,10 @@ namespace DIP
             {
                 bmp = mtForm.ProcessedBitmap;
             }
+            else if (activeChild is CannyForm cannyForm)
+            {
+                bmp = cannyForm.ProcessedBitmap;
+            }
 
             if (bmp == null)
             {
@@ -1170,20 +1174,22 @@ namespace DIP
             }
             else if (mode == 1) // Canny
             {
-                double low = 30.0;
-                double high = 90.0;
-                if (ParamDialog.ShowCannyDialog(out low, out high))
+                if (!IsImageActuallyGrayscale(activeChild.pBitmap))
                 {
-                    unsafe
-                    {
-                        fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                        {
-                            detect_canny(f0, tempW, tempH, d, g0, low, high);
-                        }
-                    }
-                    name = string.Format("Canny 邊緣 (Canny Edges, L={0:F0}, H={1:F0})", low, high);
+                    MessageBox.Show(
+                        "Canny邊緣檢測功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                        "不支援的影像格式 (Format Error)",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                    return;
                 }
-                else return;
+
+                CannyForm cannyForm = new CannyForm(this, activeChild.pBitmap);
+                cannyForm.pf1 = this.stStripLabel;
+                cannyForm.MdiParent = this;
+                cannyForm.Show();
+                return;
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
