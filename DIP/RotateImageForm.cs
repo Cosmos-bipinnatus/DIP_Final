@@ -16,6 +16,33 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                double angle = GetCurrentAngle();
+                int mode = GetCurrentMode();
+                string modeStr = mode == 2 ? "正向 (Forward)" :
+                                 mode == 1 ? "雙線性 (Bilinear)" : "最近鄰 (Nearest)";
+                string bgTypeStr = "透明";
+                if (radioBgBlack.Checked) bgTypeStr = "黑色";
+                else if (radioBgWhite.Checked) bgTypeStr = "白色";
+                else if (radioBgGray.Checked) bgTypeStr = "中間值";
+                else if (radioBgCustom.Checked) bgTypeStr = "自訂";
+                
+                return string.Format("[即時預覽調整中]\n旋轉角度: {0:F1}°\n映射與插值: {1}\n背景顏色: {2}\n融入原圖: {3}", 
+                    angle, modeStr, bgTypeStr, chkBlendBg.Checked ? "是" : "否");
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "影像旋轉是利用二維旋轉矩陣對影像像素坐標進行仿射轉換。本程式支援最近鄰插值與雙線性插值。最近鄰插值計算速度快但邊緣易產生鋸齒；雙線性插值以鄰近四個像素進行加權平均，效果較為平滑。正向映射將來源像素投影至目標，容易產生空隙點；反向映射自目標坐標反查來源，能確保輸出影像像素的連續與完整性。";
+            }
+        }
+
         internal ToolStripStatusLabel pf1;
 
         // UI Controls
@@ -540,6 +567,17 @@ namespace DIP
                 else childForm.initialBgType = "Custom";
 
                 childForm.initialCustomColor = customBgColor;
+
+                // Pass parameters for sidebar statistics display
+                string bgTypeStr = "透明";
+                if (radioBgBlack.Checked) bgTypeStr = "黑色";
+                else if (radioBgWhite.Checked) bgTypeStr = "白色";
+                else if (radioBgGray.Checked) bgTypeStr = "中間值";
+                else if (radioBgCustom.Checked) bgTypeStr = "自訂";
+                
+                childForm.ImageInfoParameters = string.Format("旋轉角度: {0:F1}°\n映射與插值: {1}\n背景顏色: {2}\n融入原圖: {3}", 
+                    angle, modeStr, bgTypeStr, chkBlendBg.Checked ? "是" : "否");
+                childForm.ImageAlgorithmDescription = this.ImageAlgorithmDescription;
 
                 childForm.Show();
             }

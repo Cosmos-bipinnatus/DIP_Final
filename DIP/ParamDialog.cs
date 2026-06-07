@@ -413,5 +413,84 @@ namespace DIP
                 return false;
             }
         }
+
+        // 8. Median Filter Options Dialog (1x1, 3x3, 5x5 RadioButtons)
+        public static bool ShowMedianFilterDialog(out int kSize)
+        {
+            kSize = 3; // Default
+            using (ParamDialog dlg = new ParamDialog())
+            {
+                dlg.Text = "中位數濾波 (Median Filter)";
+                dlg.ClientSize = new Size(340, 160);
+
+                Label lbl = new Label 
+                { 
+                    Text = "選擇濾波核心大小 (Kernel Size):", 
+                    Location = new Point(20, 20), 
+                    AutoSize = true, 
+                    ForeColor = Color.Black 
+                };
+
+                RadioButton rad1x1 = new RadioButton 
+                { 
+                    Text = "1x1 核心 (無濾波)", 
+                    Location = new Point(30, 50), 
+                    Size = new Size(130, 24), 
+                    ForeColor = Color.Black 
+                };
+                
+                RadioButton rad3x3 = new RadioButton 
+                { 
+                    Text = "3x3 核心 (推薦)", 
+                    Checked = true, 
+                    Location = new Point(30, 80), 
+                    Size = new Size(130, 24), 
+                    ForeColor = Color.Black 
+                };
+                
+                RadioButton rad5x5 = new RadioButton 
+                { 
+                    Text = "5x5 核心", 
+                    Location = new Point(180, 80), 
+                    Size = new Size(100, 24), 
+                    ForeColor = Color.Black 
+                };
+
+                Button btnOk = new Button 
+                { 
+                    Text = "確定 (OK)", 
+                    DialogResult = DialogResult.OK, 
+                    Location = new Point(120, 120), 
+                    Size = new Size(90, 30), 
+                    FlatStyle = FlatStyle.Flat, 
+                    BackColor = Color.FromArgb(230, 230, 235), 
+                    ForeColor = Color.Black 
+                };
+                
+                Button btnCancel = new Button 
+                { 
+                    Text = "取消 (Cancel)", 
+                    DialogResult = DialogResult.Cancel, 
+                    Location = new Point(225, 120), 
+                    Size = new Size(90, 30), 
+                    FlatStyle = FlatStyle.Flat, 
+                    FlatAppearance = { BorderColor = Color.FromArgb(200, 200, 200) }, 
+                    ForeColor = Color.FromArgb(64, 64, 64) 
+                };
+
+                dlg.Controls.AddRange(new Control[] { lbl, rad1x1, rad3x3, rad5x5, btnOk, btnCancel });
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCancel;
+
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    if (rad1x1.Checked) kSize = 1;
+                    else if (rad3x3.Checked) kSize = 3;
+                    else if (rad5x5.Checked) kSize = 5;
+                    return true;
+                }
+                return false;
+            }
+        }
     }
 }

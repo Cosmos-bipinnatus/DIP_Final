@@ -35,6 +35,22 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                return string.Format("[即時預覽調整中]\n低閾值 (Low Thresh): {0}\n高閾值 (High Thresh): {1}", trackBarLow.Value, trackBarHigh.Value);
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "Canny 算子是影像處理中最經典的多階段邊緣檢測演算法。流程包含：(1) 使用高斯低通濾波器平滑影像以抑噪；(2) 用 Sobel 算子計算梯度幅值與方向；(3) 進行非極大值抑制 (NMS)，僅保留梯度方向上的局部最大值以細化邊緣；(4) 使用遲滯雙閾值進行邊緣連接，高閾值確認邊緣起點，低閾值沿著邊緣延伸方向尋找相連的弱邊緣像素，輸出連續且極細的二值化邊緣輪廓。";
+            }
+        }
+
         public CannyForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
@@ -288,7 +304,8 @@ namespace DIP
             {
                 string title = string.Format("Canny 邊緣 (Low={0}, High={1})", trackBarLow.Value, trackBarHigh.Value);
                 Bitmap outputBmp = processedBmp.Clone(new Rectangle(0, 0, processedBmp.Width, processedBmp.Height), processedBmp.PixelFormat);
-                mainForm.ShowNewImage(outputBmp, title);
+                string paramText = string.Format("套用演算法: Canny 邊緣偵測 (Canny Edge Detector)\n低閾值 (Low): {0}\n高閾值 (High): {1}", trackBarLow.Value, trackBarHigh.Value);
+                mainForm.ShowNewImage(outputBmp, title, paramText, ImageAlgorithmDescription);
             }
             this.Close();
         }

@@ -29,6 +29,22 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                return string.Format("[即時預覽調整中]\n二值化門檻 (T): {0}", trackBarThreshold.Value);
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "將影像的像素亮度與給定閾值 T 進行比較。大於或等於 T 的像素設為 255（白色），小於 T 的像素設為 0（黑色），從而將灰階影像轉化為只有黑白兩色的二值影像。常作為邊緣提取、目標物分割與特徵提取的預處理步驟。";
+            }
+        }
+
         public ManualThresholdForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
@@ -208,7 +224,8 @@ namespace DIP
             {
                 string title = string.Format("手動二值化 (Threshold={0})", trackBarThreshold.Value);
                 Bitmap outputBmp = processedBmp.Clone(new Rectangle(0, 0, processedBmp.Width, processedBmp.Height), processedBmp.PixelFormat);
-                mainForm.ShowNewImage(outputBmp, title);
+                string paramText = string.Format("套用演算法: 手動門檻二值化\n二值化門檻 (T): {0}", trackBarThreshold.Value);
+                mainForm.ShowNewImage(outputBmp, title, paramText, ImageAlgorithmDescription);
             }
             this.Close();
         }

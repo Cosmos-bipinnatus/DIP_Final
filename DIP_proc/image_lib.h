@@ -26,4 +26,5 @@ extern "C" {
     __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g, double lowThresh, double highThresh);
     __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d, int *g, int houghThreshold, int lineR, int lineG, int lineB);
     __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d, int *g, int rMin, int rMax, int houghThreshold, int lineR, int lineG, int lineB);
+    __declspec(dllexport) void median_filter(int *f, int w, int h, int d, int *g, int kSize);
 }

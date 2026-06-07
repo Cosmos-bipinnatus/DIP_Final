@@ -82,6 +82,29 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                if (rdoLinear.Checked)
+                {
+                    return string.Format("[即時預覽調整中]\n調整模式: 線性調整\n對比度 (Alpha): {0:F2}\n亮度 (Beta): {1}", GetAlphaValue(), trackBarBeta.Value);
+                }
+                else
+                {
+                    return string.Format("[即時預覽調整中]\n調整模式: 非線性 Gamma\nGamma 係數: {0:F2}", GetGammaValue());
+                }
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "提供線性與非線性兩種明暗變換。線性模式透過對比度係數 Alpha（乘算）與亮度偏置 Beta（加算）進行像素對應：g(x,y) = Alpha * f(x,y) + Beta。非線性模式則採用 Gamma 冪律變換：g(x,y) = 255 * (f(x,y)/255)^Gamma，當 Gamma > 1 時壓低暗部並拉伸亮部，Gamma < 1 時則拉伸暗部，可有效修正非線性曝光與動態範圍。";
+            }
+        }
+
         public BrightnessContrastGammaForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
@@ -443,7 +466,8 @@ namespace DIP
                     ? string.Format("亮度對比調整(線性, a={0:F1}, b={1})", GetAlphaValue(), trackBarBeta.Value)
                     : string.Format("Gamma轉換(非線性, g={0:F2})", GetGammaValue());
                 Bitmap outputBmp = processedBmp.Clone(new Rectangle(0, 0, processedBmp.Width, processedBmp.Height), processedBmp.PixelFormat);
-                mainForm.ShowNewImage(outputBmp, title);
+                string paramText = ImageInfoParameters.Replace("[即時預覽調整中]", "套用演算法: 亮度對比與 Gamma 調整");
+                mainForm.ShowNewImage(outputBmp, title, paramText, ImageAlgorithmDescription);
             }
             this.Close();
         }

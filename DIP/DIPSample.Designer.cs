@@ -37,6 +37,8 @@ namespace DIP
             this.oFileDlg = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.rGBtoGrayToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rGBtoGray24bitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.rGBtoGray8bitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.histogramToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.showHistogramToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.histogramEqualizationGammaValueToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -117,10 +119,26 @@ namespace DIP
             // 
             // rGBtoGrayToolStripMenuItem
             // 
+            this.rGBtoGrayToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.rGBtoGray24bitToolStripMenuItem,
+            this.rGBtoGray8bitToolStripMenuItem});
             this.rGBtoGrayToolStripMenuItem.Name = "rGBtoGrayToolStripMenuItem";
             this.rGBtoGrayToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.rGBtoGrayToolStripMenuItem.Text = "彩色轉灰階 (RGB to Gray)";
-            this.rGBtoGrayToolStripMenuItem.Click += new System.EventHandler(this.RGBtoGrayToolStripMenuItem_Click);
+            // 
+            // rGBtoGray24bitToolStripMenuItem
+            // 
+            this.rGBtoGray24bitToolStripMenuItem.Name = "rGBtoGray24bitToolStripMenuItem";
+            this.rGBtoGray24bitToolStripMenuItem.Size = new System.Drawing.Size(250, 26);
+            this.rGBtoGray24bitToolStripMenuItem.Text = "灰階顯示預覽 (24-bit 輸出)";
+            this.rGBtoGray24bitToolStripMenuItem.Click += new System.EventHandler(this.RGBtoGray24bitToolStripMenuItem_Click);
+            // 
+            // rGBtoGray8bitToolStripMenuItem
+            // 
+            this.rGBtoGray8bitToolStripMenuItem.Name = "rGBtoGray8bitToolStripMenuItem";
+            this.rGBtoGray8bitToolStripMenuItem.Size = new System.Drawing.Size(250, 26);
+            this.rGBtoGray8bitToolStripMenuItem.Text = "轉換為灰階圖像 (8-bit 輸出)";
+            this.rGBtoGray8bitToolStripMenuItem.Click += new System.EventHandler(this.RGBtoGray8bitToolStripMenuItem_Click);
             // 
             // iPToolStripMenuItem
             // 
@@ -135,7 +153,6 @@ namespace DIP
             // histogramToolStripMenuItem
             // 
             this.histogramToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.showHistogramToolStripMenuItem,
             this.histogramEqualizationLinearToolStripMenuItem});
             this.histogramToolStripMenuItem.Name = "histogramToolStripMenuItem";
             this.histogramToolStripMenuItem.Size = new System.Drawing.Size(93, 24);
@@ -271,6 +288,8 @@ namespace DIP
         private System.Windows.Forms.OpenFileDialog oFileDlg;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
         private System.Windows.Forms.ToolStripMenuItem rGBtoGrayToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rGBtoGray24bitToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rGBtoGray8bitToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem histogramToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem showHistogramToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem histogramEqualizationGammaValueToolStripMenuItem;

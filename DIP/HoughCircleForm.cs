@@ -53,6 +53,23 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                return string.Format("[即時預覽調整中]\n半徑範圍: {0} ~ {1} 像素\n投票閾值: {2}\n繪製顏色: {3}", 
+                    trackBarRMin.Value, trackBarRMax.Value, trackBarThreshold.Value, GetSelectedColor().Name);
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "使用三維參數累積空間 (x_c, y_c, r) 進行投票。為了大幅提高效率，底層結合了 Sobel 梯度方向向量投影，使邊緣點僅沿著梯度方向及其反方向進行一維線段投票，大幅減少無用累積。當局部投票數大於門檻值時即判定圓心與半徑存在。";
+            }
+        }
+
         public HoughCircleForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
@@ -484,7 +501,7 @@ namespace DIP
                 Bitmap cleanBmp = new Bitmap(w, h, PixelFormat.Format24bppRgb);
                 using (Graphics gr = Graphics.FromImage(cleanBmp))
                 {
-                    gr.DrawImage(originalBmp, 0, 0);
+                    gr.DrawImage(originalBmp, new Rectangle(0, 0, w, h));
                 }
 
                 string title = string.Format("霍夫圓形 (R:{0}-{1}, Threshold={2})", trackBarRMin.Value, trackBarRMax.Value, trackBarThreshold.Value);
@@ -515,6 +532,10 @@ namespace DIP
                 // MSForm will load default based on initialBlend
                 childForm.pBitmap = radioBlend.Checked ? childForm.bakedHoughBmp : childForm.cleanHoughBmp;
 
+                childForm.ImageInfoParameters = string.Format("套用演算法: 霍夫圓形偵測 (Hough Circle Detection)\n半徑範圍: {0} ~ {1} 像素\n投票閾值: {2}\n繪製顏色: {3}", 
+                    trackBarRMin.Value, trackBarRMax.Value, trackBarThreshold.Value, GetSelectedColor().Name);
+                childForm.ImageAlgorithmDescription = ImageAlgorithmDescription;
+
                 childForm.Show();
             }
             this.Close();
@@ -540,7 +561,7 @@ namespace DIP
                 workingBmp = new Bitmap(w, h, PixelFormat.Format24bppRgb);
                 using (Graphics gr = Graphics.FromImage(workingBmp))
                 {
-                    gr.DrawImage(originalBmp, 0, 0);
+                    gr.DrawImage(originalBmp, new Rectangle(0, 0, w, h));
                 }
                 tempCreated = true;
             }

@@ -45,6 +45,22 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                return string.Format("[即時預覽調整中]\n投票閾值: {0}\n繪製顏色: {1}", trackBarThreshold.Value, GetSelectedColor().Name);
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "利用極坐標對偶原理 (rho = x * cos(theta) + y * sin(theta)) 將影像空間中的邊緣點映射到 (rho, theta) 參數累積空間。當多個邊緣點共線時，其對應的曲線會在累積空間中交於一點並形成局部極大值。檢測大於投票門檻的點即可提取出影像中的直線輪廓。";
+            }
+        }
+
         public HoughLineForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
@@ -390,7 +406,7 @@ namespace DIP
                 Bitmap cleanBmp = new Bitmap(w, h, PixelFormat.Format24bppRgb);
                 using (Graphics gr = Graphics.FromImage(cleanBmp))
                 {
-                    gr.DrawImage(originalBmp, 0, 0);
+                    gr.DrawImage(originalBmp, new Rectangle(0, 0, w, h));
                 }
 
                 string title = string.Format("霍夫直線 (Threshold={0})", trackBarThreshold.Value);
@@ -419,6 +435,10 @@ namespace DIP
                 // MSForm will load default based on initialBlend
                 childForm.pBitmap = radioBlend.Checked ? childForm.bakedHoughBmp : childForm.cleanHoughBmp;
 
+                childForm.ImageInfoParameters = string.Format("套用演算法: 霍夫直線偵測 (Hough Line Detection)\n投票閾值: {0}\n繪製顏色: {1}", 
+                    trackBarThreshold.Value, GetSelectedColor().Name);
+                childForm.ImageAlgorithmDescription = ImageAlgorithmDescription;
+
                 childForm.Show();
             }
             this.Close();
@@ -444,7 +464,7 @@ namespace DIP
                 workingBmp = new Bitmap(w, h, PixelFormat.Format24bppRgb);
                 using (Graphics gr = Graphics.FromImage(workingBmp))
                 {
-                    gr.DrawImage(originalBmp, 0, 0);
+                    gr.DrawImage(originalBmp, new Rectangle(0, 0, w, h));
                 }
                 tempCreated = true;
             }

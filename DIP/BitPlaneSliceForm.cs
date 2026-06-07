@@ -16,6 +16,25 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
+        public string ImageInfoParameters
+        {
+            get
+            {
+                int plane = trackBarPlane.Value;
+                bool binarize = chkBinarize.Checked;
+                return string.Format("套用演算法: 位元平面切片 (Bit-plane Slicing)\n選取平面: 第 {0} 面\n二值化放大: {1}", 
+                    plane, binarize ? "啟用" : "停用");
+            }
+        }
+
+        public string ImageAlgorithmDescription
+        {
+            get
+            {
+                return "位元平面切片將一個 8-bit 的灰階影像像素（數值 0 ~ 255）拆解為 8 個二進位位元（第 0 位元至第 7 位元），並分別重組為 8 個二進位切片影像。高位元平面（如第 7、6 面）佔像素數值權重最高，代表了影像主要的低頻輪廓與明暗結構；低位元平面（如第 0、1 面）權重極低，代表微弱細節與背景噪訊。";
+            }
+        }
+
         internal ToolStripStatusLabel pf1;
 
         private PictureBox pictureBox1;

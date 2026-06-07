@@ -14,6 +14,8 @@ namespace DIP
     {
         internal Bitmap pBitmap;
         internal ToolStripStatusLabel pf1;
+        internal string ImageInfoParameters { get; set; } = "原始載入影像 (Original loaded image)";
+        internal string ImageAlgorithmDescription { get; set; } = "本影像是直接從外部檔案讀入的原始影像數據，未套用任何數位影像處理運算。";
         int w, h;
         private ContextMenuStrip imageContextMenu;
 
@@ -379,7 +381,7 @@ namespace DIP
                 using (Graphics g = Graphics.FromImage(bakedBmp))
                 {
                     g.Clear(bgCol);
-                    g.DrawImage(originalTransparentBmp, 0, 0);
+                    g.DrawImage(originalTransparentBmp, new Rectangle(0, 0, originalTransparentBmp.Width, originalTransparentBmp.Height));
                 }
 
                 pBitmap = bakedBmp;

@@ -55,6 +55,9 @@ namespace DIP
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static unsafe extern void detect_circles_hough(int* f, int w, int h, int d, int* g, int rMin, int rMax, int houghThreshold, int lineR, int lineG, int lineB);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        public static unsafe extern void median_filter(int* f, int w, int h, int d, int* g, int kSize);
+
         // ==========================================
         // Sidebar UI Elements and State variables
         // ==========================================
@@ -201,6 +204,11 @@ namespace DIP
                 btnCustom.Click += (s, e) => ApplyCustomFilter();
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnCustom);
                 BindTooltip(btnCustom, "自訂 3x3 或 5x5 的濾波器核心矩陣、除數與偏移量，對灰階影像進行鄰域卷積運算。");
+
+                ToolStripMenuItem btnMedian = new ToolStripMenuItem("中位數濾波 (Median Filter)...");
+                btnMedian.Click += (s, e) => ApplyMedianFilter();
+                this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnMedian);
+                BindTooltip(btnMedian, "非線性空間低通濾波器，利用鄰域中位數去噪，對消除椒鹽雜訊極為有效，且能保護影像邊緣。");
             }
 
             // Dynamically add Sobel and Canny to Edge Detection menu
@@ -232,10 +240,6 @@ namespace DIP
             this.menuStrip1.Items.Add(houghMenu);
 
             // Wire the click event for Show Histogram
-            this.showHistogramToolStripMenuItem.Click += (s, e) => {
-                this.panelSidebar.Visible = !this.panelSidebar.Visible;
-                UpdateHistogram();
-            };
 
             // Grayscale equalization
             this.histogramEqualizationLinearToolStripMenuItem.Click += (s, e) => ApplyHistogramEqualization();
@@ -250,11 +254,12 @@ namespace DIP
 
             // Bind tooltips for sub-menus
             BindTooltip(this.openToolStripMenuItem, "載入 JPEG、BMP 或 PNG 格式的影像檔案至工作區中。");
-            BindTooltip(this.rGBtoGrayToolStripMenuItem, "採用 BT.601 標準公式 (Y = 0.299*R + 0.587*G + 0.114*B) 將 BGR 彩色影像轉換為單通道亮度灰階影像。");
+            BindTooltip(this.rGBtoGrayToolStripMenuItem, "採用 BT.601 標準公式將 BGR 彩色影像轉換為灰階影像。包含 24-bit 預覽與標準 8-bit 輸出子選項。");
+            BindTooltip(this.rGBtoGray24bitToolStripMenuItem, "採用 BT.601 標準公式將彩色影像轉換為 24-bit 灰階影像（R=G=B 通道相同但仍為 24-bit 格式），便於一般顯示預覽。");
+            BindTooltip(this.rGBtoGray8bitToolStripMenuItem, "將影像轉換為標準的 8-bit 灰階格式 (Format8bppIndexed)，支援二值化、空間濾波與霍夫線圓偵測等特殊演算法。");
             BindTooltip(this.averagingFilterToolStripMenuItem, "空間低通濾波器，利用鄰域均值模糊影像，可平滑細小雜訊但會使邊緣稍微朦朧。");
             BindTooltip(this.gaussianFiltersToolStripMenuItem, "空間低通濾波器，採用高斯加權權重模板，進行更自然的影像平滑防噪處理。");
             BindTooltip(this.bitPlanesToolStripMenuItem, "將 8 位元灰階影像拆解為 8 個獨立的二進位位元平面，高位元平面包含主要結構，低位元平面包含細微雜訊。");
-            BindTooltip(this.showHistogramToolStripMenuItem, "切換顯示側邊欄統計圖表，即時呈現影像中藍、綠、紅或灰階通道的像素亮度分佈與均值、中位數、標準差。");
             BindTooltip(this.histogramEqualizationLinearToolStripMenuItem, "計算累積機率分佈函數 (CDF) 以自動拉伸灰階範圍，顯著提升低對比影像的整體亮暗細節。");
             BindTooltip(this.histogramEqualizationGammaValueToolStripMenuItem, "調整亮度與對比度，並支援非線性 Gamma 冪律變換，修正影像的感光曲線，支援預覽圖滑鼠平移拖曳操作。");
             BindTooltip(this.rotationToolStripMenuItem, "支援最近鄰與雙線性插值，可自由設定映射模式、旋轉角度、背景填色及原圖融入，並防範邊界裁切問題。");
@@ -742,7 +747,7 @@ namespace DIP
                 }
             }
 
-            lblStats.Text = string.Format(
+            string baseStats = string.Format(
                 "影像尺寸 (Image Size): {0} x {1}\n" +
                 "格式 (Format): {2}\n" +
                 "總像素 (Total Pixels): {3:N0}\n\n" +
@@ -752,6 +757,38 @@ namespace DIP
                 "標準差 (Std Deviation): {6:F2}",
                 tempW, tempH, pf.ToString(), total, mean, median, stdDev
             );
+
+            string paramStr = "";
+            string descStr = "";
+
+            if (activeChild != null)
+            {
+                try
+                {
+                    var paramProp = activeChild.GetType().GetProperty("ImageInfoParameters", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (paramProp != null)
+                    {
+                        paramStr = paramProp.GetValue(activeChild, null) as string;
+                    }
+                    var descProp = activeChild.GetType().GetProperty("ImageAlgorithmDescription", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (descProp != null)
+                    {
+                        descStr = descProp.GetValue(activeChild, null) as string;
+                    }
+                }
+                catch { }
+            }
+
+            if (!string.IsNullOrEmpty(paramStr))
+            {
+                baseStats += "\n\n--- 影像生成設定 (Image Settings) ---\n" + paramStr;
+            }
+            if (!string.IsNullOrEmpty(descStr))
+            {
+                baseStats += "\n\n--- 演算法原理說明 (Algorithm Docs) ---\n" + descStr;
+            }
+
+            lblStats.Text = baseStats;
 
             picHistB.Invalidate();
             if (!isActuallyGray)
@@ -864,18 +901,26 @@ namespace DIP
         // ==========================================
         // Event click handling helper methods
         // ==========================================
-        internal void ShowNewImage(Bitmap bmp, string title)
+        internal void ShowNewImage(Bitmap bmp, string title, string imageParams = "", string algoDesc = "")
         {
             MSForm childForm = new MSForm();
             childForm.MdiParent = this;
             childForm.pf1 = stStripLabel;
             childForm.pBitmap = bmp;
             childForm.Text = title;
+            if (!string.IsNullOrEmpty(imageParams))
+            {
+                childForm.ImageInfoParameters = imageParams;
+            }
+            if (!string.IsNullOrEmpty(algoDesc))
+            {
+                childForm.ImageAlgorithmDescription = algoDesc;
+            }
             childForm.Show();
             UpdateHistogram();
         }
 
-        private void RGBtoGrayToolStripMenuItem_Click(object sender, EventArgs e)
+        private void RGBtoGray24bitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
@@ -899,7 +944,91 @@ namespace DIP
             }
 
             Bitmap grayBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(grayBmp, "灰階影像 (Grayscale Image)");
+            ShowNewImage(grayBmp, "灰階影像 (Grayscale 24-bit)",
+                "套用演算法: 影像轉灰階 (24-bit)",
+                "灰階轉換是將彩色影像（通常為 BGR 通道）透過特定權重公式轉換為單一亮度值的過程。本系統採用 ITU-R BT.601 標準公式：Y = 0.299 * R + 0.587 * G + 0.114 * B 進行計算。此選項輸出為 24-bit / 32-bit 彩色格式（R=G=B），便於一般顯示預覽。注意：24-bit 灰階直接儲存 BGR 數值，而 8-bit 灰階透過調色盤索引間接表示，兩者在 GDI+ 色彩管理、捨入誤差與調色盤對齊的影響下，直方圖數值可能會產生微小偏差。");
+        }
+
+        private void RGBtoGray8bitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MSForm activeChild = this.ActiveMdiChild as MSForm;
+            if (activeChild == null) return;
+
+            Bitmap gray8bpp = ConvertTo8bppGrayscale(activeChild.pBitmap);
+            ShowNewImage(gray8bpp, "灰階影像 (Grayscale 8-bit)",
+                "套用演算法: 影像轉灰階 (8-bit)",
+                "灰階轉換是將彩色影像轉換為單一亮度灰度值的過程。此選項採用 Format8bppIndexed 格式輸出，並寫入線性漸變的 256 色灰階調色盤。以標準加權平均公式：Y = 0.299 * R + 0.587 * G + 0.114 * B 進行計算，能完整保留灰階細節且完全符合後續二值化、空間濾波與霍夫線圓偵測等特殊演算法格式需求。注意：24-bit 灰階直接儲存 BGR 數值，而 8-bit 灰階透過調色盤索引間接表示，兩者在 GDI+ 色彩管理、捨入誤差與調色盤對齊的影響下，直方圖數值可能會產生微小偏差。");
+        }
+
+        private Bitmap ConvertTo8bppGrayscale(Bitmap src)
+        {
+            if (src.PixelFormat == PixelFormat.Format8bppIndexed)
+            {
+                return (Bitmap)src.Clone();
+            }
+
+            int tempW = src.Width;
+            int tempH = src.Height;
+            
+            Bitmap dest = new Bitmap(tempW, tempH, PixelFormat.Format8bppIndexed);
+            
+            ColorPalette pal = dest.Palette;
+            for (int i = 0; i < 256; i++)
+            {
+                pal.Entries[i] = Color.FromArgb(i, i, i);
+            }
+            dest.Palette = pal;
+            
+            int srcD = 0;
+            PixelFormat srcPf = new PixelFormat();
+            ColorPalette srcPal = null;
+            int[] fArray = dyn_bmp2array(src, ref srcD, ref srcPf, ref srcPal);
+            
+            BitmapData destData = dest.LockBits(new Rectangle(0, 0, tempW, tempH), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            
+            int destStride = destData.Stride;
+            int destSkip = destStride - tempW;
+            
+            unsafe
+            {
+                byte* destPtr = (byte*)destData.Scan0;
+                if (srcD == 1)
+                {
+                    for (int y = 0; y < tempH; y++)
+                    {
+                        for (int x = 0; x < tempW; x++)
+                        {
+                            *destPtr = (byte)fArray[y * tempW + x];
+                            destPtr++;
+                        }
+                        destPtr += destSkip;
+                    }
+                }
+                else if (srcD == 3 || srcD == 4)
+                {
+                    for (int y = 0; y < tempH; y++)
+                    {
+                        for (int x = 0; x < tempW; x++)
+                        {
+                            int idx = (y * tempW + x) * srcD;
+                            int b = fArray[idx + 0];
+                            int g = fArray[idx + 1];
+                            int r = fArray[idx + 2];
+                            
+                            int gray = (int)(r * 0.299 + g * 0.587 + b * 0.114);
+                            if (gray < 0) gray = 0;
+                            if (gray > 255) gray = 255;
+                            
+                            *destPtr = (byte)gray;
+                            destPtr++;
+                        }
+                        destPtr += destSkip;
+                    }
+                }
+            }
+            
+            dest.UnlockBits(destData);
+            return dest;
         }
 
         private bool IsImageActuallyGrayscale(Bitmap bmp)
@@ -931,18 +1060,19 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            Bitmap bmpToUse = activeChild.pBitmap;
+            if (!IsImageActuallyGrayscale(bmpToUse) || bmpToUse.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show(
-                    "位元平面切片功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            BitPlaneSliceForm sliceForm = new BitPlaneSliceForm(this, activeChild.pBitmap);
+            BitPlaneSliceForm sliceForm = new BitPlaneSliceForm(this, bmpToUse);
             sliceForm.pf1 = this.stStripLabel;
             sliceForm.MdiParent = this;
             sliceForm.Show();
@@ -982,7 +1112,9 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, "直方圖等化 (Histogram Equalized)");
+            ShowNewImage(newBmp, "直方圖等化 (Histogram Equalized)",
+                "套用演算法: 直方圖等化 (Histogram Equalization)",
+                "直方圖等化是一種利用影像累積亮度分佈函數 (CDF) 作為映射曲線的影像增強技術。它能將影像的亮度直方圖均勻拉伸到整個 0~255 的區間，從而顯著提升影像的整體對比度與暗部細節，非常適合用於光線分佈過度集中或曝光不足的影像。");
         }
 
         private void ApplyFilter(int filterType)
@@ -1039,16 +1171,11 @@ namespace DIP
             }
             else if (filterType == 4) // High-Boost filter
             {
-                int weightVal = 12;
-                if (ParamDialog.ShowSliderDialog("高提升濾波 (High-Boost Filter)", "輸入 A 係數 (Enter scale A, 10 to 30, representing 1.0 to 3.0):", 10, 30, 12, out weightVal))
-                {
-                    double A = (double)weightVal / 10.0;
-                    double center = 8.0 + (A - 1.0) * 9.0;
-                    kernel = new double[] { -1, -1, -1, -1, center, -1, -1, -1, -1 };
-                    divisor = 1.0;
-                    filterName = string.Format("高提升濾波 (High-Boost, A={0:F1})", A);
-                }
-                else return;
+                HighBoostFilterForm hbForm = new HighBoostFilterForm(this, bmp);
+                hbForm.pf1 = this.stStripLabel;
+                hbForm.MdiParent = this;
+                hbForm.Show();
+                return;
             }
 
             unsafe
@@ -1060,7 +1187,31 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, filterName);
+            
+            string paramText = "";
+            string algoDescText = "";
+            if (filterType == 0)
+            {
+                paramText = "套用演算法: 平均濾波 (Mean Filter)\n核心大小: 3 x 3\n除數 (Divisor): 9.0\n偏移量 (Offset): 0.0";
+                algoDescText = "平均濾波器是一種線性空間低通濾波器。它的核心係數皆為 1，並將計算後的鄰域總和除以 9。此濾波器以鄰域像素的平均值取代中心像素值，可平滑影像中的隨機細小雜訊，但代價是會使影像的邊緣和細節變得模糊。";
+            }
+            else if (filterType == 1)
+            {
+                paramText = "套用演算法: 高斯濾波 (Gaussian Filter)\n核心大小: 3 x 3\n除數 (Divisor): 16.0\n偏移量 (Offset): 0.0";
+                algoDescText = "高斯濾波器是一種平滑線性低通濾波器，其核心權重符合二維高斯分佈（中心點權重最大，向外呈鐘形衰減）。相較於平均濾波，高斯濾波能在去除高頻隨機雜訊的同時，更自然地保留影像的邊緣與細部特徵。";
+            }
+            else if (filterType == 2)
+            {
+                paramText = "套用演算法: 拉普拉斯銳化 (Laplacian Sharpening)\n核心大小: 3 x 3\n除數 (Divisor): 1.0\n偏移量 (Offset): 0.0";
+                algoDescText = "拉普拉斯算子是一種二階微分算子，對影像中的亮度急劇變化處（即邊緣與線條）非常敏感。本功能採用 8 鄰域拉普拉斯算子進行卷積，計算中心像素與其周圍 8 個鄰域像素的二次差值，並將產生的邊緣細節疊加回原圖，從而顯著增強邊緣對比度，使影像更加銳利清晰。";
+            }
+            else if (filterType == 3)
+            {
+                paramText = "套用演算法: 高斯-拉普拉斯濾波 (LoG Filter)\n核心大小: 5 x 5\n除數 (Divisor): 1.0\n偏移量 (Offset): 128.0";
+                algoDescText = "高斯-拉普拉斯算子 (LoG) 結合了高斯低通平滑與拉普拉斯二階微分。由於拉普拉斯算子對噪訊極為敏感，LoG 演算法會先使用 5x5 的高斯核對影像進行平滑去噪，隨後再利用二階微分提取精確的邊緣極值點。它常用於影像中的特徵點偵測與多尺度邊緣分析。由於微分結果有正有負，輸出時疊加了 128 的偏移量以便於視覺化顯示。";
+            }
+
+            ShowNewImage(newBmp, filterName, paramText, algoDescText);
         }
 
         private void ApplyCustomFilter()
@@ -1068,44 +1219,22 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            Bitmap bmpToUse = activeChild.pBitmap;
+            if (!IsImageActuallyGrayscale(bmpToUse) || bmpToUse.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show(
-                    "自訂濾波器功能僅支援灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            double[] kernel;
-            int kSize;
-            double divisor;
-            double offset;
-
-            if (ParamDialog.ShowCustomFilterDialog(out kernel, out kSize, out divisor, out offset))
-            {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        convolution_filter(f0, tempW, tempH, d, g0, kernel, kSize, divisor, offset);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("自訂 {0}x{0} 濾波器", kSize));
-            }
+            CustomFilterForm customForm = new CustomFilterForm(this, bmpToUse);
+            customForm.pf1 = this.stStripLabel;
+            customForm.MdiParent = this;
+            customForm.Show();
         }
 
         private void ApplyScaling(int mode)
@@ -1141,7 +1270,10 @@ namespace DIP
                 }
 
                 Bitmap newBmp = dyn_array2bmp(gArray, newW, newH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("縮放 {0}% ({1})", scalePercent, mode == 0 ? "最近鄰 (Nearest)" : "雙線性 (Bilinear)"));
+                string scaleMethod = mode == 0 ? "最近鄰插值 (Nearest Neighbor)" : "雙線性插值 (Bilinear Interpolation)";
+                ShowNewImage(newBmp, string.Format("縮放 {0}% ({1})", scalePercent, mode == 0 ? "最近鄰 (Nearest)" : "雙線性 (Bilinear)"),
+                    string.Format("套用演算法: 影像幾何縮放 (Image Scaling)\n縮放比例: {0}%\n插值模式: {1}", scalePercent, scaleMethod),
+                    "影像幾何縮放使用重採樣機制變更影像的物理尺寸。最近鄰插值直接對應到最接近的原始像素點，速度最快，但放大時會出現明顯的馬賽克方塊鋸齒；雙線性插值對目標座標周圍的 2x2 像素進行雙向距離加權插值，影像放大後邊緣平滑。底層進行了像素坐標 Clamp 與中心對齊補償，避免邊界像素溢位與黑邊偏移。");
             }
         }
 
@@ -1161,18 +1293,19 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            Bitmap bmpToUse = activeChild.pBitmap;
+            if (!IsImageActuallyGrayscale(bmpToUse) || bmpToUse.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show(
-                    "大津法二值化功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            Bitmap bmp = activeChild.pBitmap;
+            Bitmap bmp = bmpToUse;
             int tempW = bmp.Width;
             int tempH = bmp.Height;
             int d = 0;
@@ -1190,7 +1323,9 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, "大津法二值化 (Otsu Threshold Binarized)");
+            ShowNewImage(newBmp, "大津法二值化 (Otsu Threshold Binarized)",
+                "套用演算法: 大津法自動二值化 (Otsu Threshold)",
+                "大津法 (Otsu) 是一種基於統計學的自動閾值計算演算法。它藉由遍歷 0~255 的所有可能閾值，計算將影像分割為前景與背景兩類時的『類間變異數 (Between-Class Variance)』。當類間變異數最大時，該閾值即為最佳二值化分割點，能最有效率地在背景與前景亮度差異明顯時分離目標物。");
         }
 
         private void ApplyManualThreshold()
@@ -1198,18 +1333,19 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            Bitmap bmpToUse = activeChild.pBitmap;
+            if (!IsImageActuallyGrayscale(bmpToUse) || bmpToUse.PixelFormat != PixelFormat.Format8bppIndexed)
             {
-                MessageBox.Show(
-                    "手動門檻二值化功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            ManualThresholdForm mtForm = new ManualThresholdForm(this, activeChild.pBitmap);
+            ManualThresholdForm mtForm = new ManualThresholdForm(this, bmpToUse);
             mtForm.pf1 = this.stStripLabel;
             mtForm.MdiParent = this;
             mtForm.Show();
@@ -1220,13 +1356,13 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            Bitmap bmp = activeChild.pBitmap;
-            int tempW = bmp.Width;
-            int tempH = bmp.Height;
+            Bitmap bmpToUse = activeChild.pBitmap;
+            int tempW = bmpToUse.Width;
+            int tempH = bmpToUse.Height;
             int d = 0;
             PixelFormat pf = new PixelFormat();
             ColorPalette pal = null;
-            int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
+            int[] fArray = dyn_bmp2array(bmpToUse, ref d, ref pf, ref pal);
             int[] gArray = new int[tempW * tempH * d];
 
             string name = "";
@@ -1243,18 +1379,18 @@ namespace DIP
             }
             else if (mode == 1) // Canny
             {
-                if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+                if (!IsImageActuallyGrayscale(bmpToUse) || bmpToUse.PixelFormat != PixelFormat.Format8bppIndexed)
                 {
-                    MessageBox.Show(
-                        "Canny邊緣檢測功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
-                        "不支援的影像格式 (Format Error)",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning
-                    );
-                    return;
+                    Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                    ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                        "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                        "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                    activeChild = this.ActiveMdiChild as MSForm;
+                    if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                    else bmpToUse = gray8bpp;
                 }
 
-                CannyForm cannyForm = new CannyForm(this, activeChild.pBitmap);
+                CannyForm cannyForm = new CannyForm(this, bmpToUse);
                 cannyForm.pf1 = this.stStripLabel;
                 cannyForm.MdiParent = this;
                 cannyForm.Show();
@@ -1262,7 +1398,16 @@ namespace DIP
             }
 
             Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-            ShowNewImage(newBmp, name);
+            if (mode == 0)
+            {
+                ShowNewImage(newBmp, name,
+                    "套用演算法: Sobel 邊緣偵測 (Sobel Operator)",
+                    "Sobel 算子是一種常用的一階微分邊緣算子。它利用兩個 3x3 卷積核分別對影像的水平 (Gx) 與垂直 (Gy) 方向進行差分運算，再透過 G = sqrt(Gx^2 + Gy^2) 近似計算像素的梯度幅值。此演算法具備一定的平滑抑噪能力，可產生明亮清晰的邊緣圖像，最外圈邊緣施加 Zero Padding 保護以維持原始影像物理尺寸。");
+            }
+            else
+            {
+                ShowNewImage(newBmp, name);
+            }
         }
 
         private void ApplyHoughLine()
@@ -1270,23 +1415,24 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
+            Bitmap bmpToUse = activeChild.pBitmap;
             int d = 0;
             PixelFormat pf = new PixelFormat();
             ColorPalette pal = null;
-            dyn_bmp2array(activeChild.pBitmap, ref d, ref pf, ref pal);
+            dyn_bmp2array(bmpToUse, ref d, ref pf, ref pal);
 
             if (d != 1)
             {
-                MessageBox.Show(
-                    "此功能僅支援標準 8-bit 灰階影像 (8bpp Indexed)！\n請載入或使用標準 8-bit 灰階影像進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            HoughLineForm hlForm = new HoughLineForm(this, activeChild.pBitmap);
+            HoughLineForm hlForm = new HoughLineForm(this, bmpToUse);
             hlForm.pf1 = this.stStripLabel;
             hlForm.MdiParent = this;
             hlForm.Show();
@@ -1297,26 +1443,38 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
+            Bitmap bmpToUse = activeChild.pBitmap;
             int d = 0;
             PixelFormat pf = new PixelFormat();
             ColorPalette pal = null;
-            dyn_bmp2array(activeChild.pBitmap, ref d, ref pf, ref pal);
+            dyn_bmp2array(bmpToUse, ref d, ref pf, ref pal);
 
             if (d != 1)
             {
-                MessageBox.Show(
-                    "此功能僅支援標準 8-bit 灰階影像 (8bpp Indexed)！\n請載入或使用標準 8-bit 灰階影像進行操作。",
-                    "不支援的影像格式 (Format Error)",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                return;
+                Bitmap gray8bpp = ConvertTo8bppGrayscale(bmpToUse);
+                ShowNewImage(gray8bpp, "自動轉換為灰階 (8-bit)", 
+                    "套用演算法: 轉換為灰階圖像 (8-bit)", 
+                    "由於該演算法需要標準 8-bit 灰階影像輸入，系統已自動為您將影像轉換為 Format8bppIndexed 灰階格式。");
+                activeChild = this.ActiveMdiChild as MSForm;
+                if (activeChild != null) bmpToUse = activeChild.pBitmap;
+                else bmpToUse = gray8bpp;
             }
 
-            HoughCircleForm hcForm = new HoughCircleForm(this, activeChild.pBitmap);
+            HoughCircleForm hcForm = new HoughCircleForm(this, bmpToUse);
             hcForm.pf1 = this.stStripLabel;
             hcForm.MdiParent = this;
             hcForm.Show();
+        }
+
+        private void ApplyMedianFilter()
+        {
+            MSForm activeChild = this.ActiveMdiChild as MSForm;
+            if (activeChild == null) return;
+
+            MedianFilterForm mForm = new MedianFilterForm(this, activeChild.pBitmap);
+            mForm.pf1 = this.stStripLabel;
+            mForm.MdiParent = this;
+            mForm.Show();
         }
     }
 }

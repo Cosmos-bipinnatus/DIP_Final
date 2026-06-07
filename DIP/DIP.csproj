@@ -118,6 +118,15 @@
     <Compile Include="HoughCircleForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="MedianFilterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HighBoostFilterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomFilterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="DIPSample.resx">
@@ -151,7 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="DIP_proc.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

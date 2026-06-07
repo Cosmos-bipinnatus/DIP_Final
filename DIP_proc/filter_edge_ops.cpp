@@ -742,4 +742,57 @@ __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d,
   delete[] dy_grad;
   delete[] accumulator;
 }
+
+__declspec(dllexport) void median_filter(int *f, int w, int h, int d, int *g, int kSize) {
+  if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0 || kSize <= 0) {
+    return;
+  }
+
+  int kHalf = kSize / 2;
+  int M = kSize * kSize;
+  int *window = new int[M];
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int idx = (y * w + x) * d;
+
+      if (d == 4) {
+        g[idx + 3] = f[idx + 3];
+      }
+
+      int channels_to_filter = (d >= 3) ? 3 : d;
+      for (int c = 0; c < channels_to_filter; c++) {
+        int wCount = 0;
+
+        for (int ki = -kHalf; ki <= kHalf; ki++) {
+          int ny = y + ki;
+          for (int kj = -kHalf; kj <= kHalf; kj++) {
+            int nx = x + kj;
+
+            int val = 0;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+              val = f[(ny * w + nx) * d + c];
+            }
+            window[wCount++] = val;
+          }
+        }
+
+        // Insertion Sort
+        for (int i = 1; i < M; i++) {
+          int key = window[i];
+          int j = i - 1;
+          while (j >= 0 && window[j] > key) {
+            window[j + 1] = window[j];
+            j--;
+          }
+          window[j + 1] = key;
+        }
+
+        g[idx + c] = window[(M - 1) / 2];
+      }
+    }
+  }
+
+  delete[] window;
+}
 }
