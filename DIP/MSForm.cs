@@ -28,12 +28,22 @@ namespace DIP
         internal string initialBgType = "Transparent";
         internal Color initialCustomColor = Color.FromArgb(240, 240, 240);
 
+        // Hough variables
+        internal bool isHoughOutput = false;
+        internal bool isHoughCircle = false;
+        internal int houghThreshold = 50;
+        internal int houghRMin = 10;
+        internal int houghRMax = 80;
+        internal Bitmap cleanHoughBmp = null;
+        internal Bitmap bakedHoughBmp = null;
+
         private Panel panelBottomBg;
         private Panel panelControlsContainer;
         private RadioButton radioBgTransparent;
         private RadioButton radioBgBlack;
         private RadioButton radioBgWhite;
         private RadioButton radioBgGray;
+        private RadioButton radioBgRed; // For Hough
         private RadioButton radioBgCustom;
         private Panel panelCustomColorPreview;
         private CheckBox chkBlendBg;
@@ -105,6 +115,19 @@ namespace DIP
                 CalculateOriginalMedians();
                 InitializeBgPanel();
                 ApplyInitialSettings();
+
+                int targetClientWidth = Math.Max(pBitmap.Width, 425);
+                int targetClientHeight = pBitmap.Height + 45;
+                this.ClientSize = new Size(targetClientWidth, targetClientHeight);
+                this.MinimumSize = new Size(425, 150);
+            }
+            else if (isHoughOutput)
+            {
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.MaximizeBox = true;
+
+                InitializeHoughPanel();
+                ApplyInitialHoughSettings();
 
                 int targetClientWidth = Math.Max(pBitmap.Width, 425);
                 int targetClientHeight = pBitmap.Height + 45;
@@ -525,15 +548,219 @@ namespace DIP
                 originalTransparentBmp.Dispose();
                 originalTransparentBmp = null;
             }
+            if (cleanHoughBmp != null)
+            {
+                cleanHoughBmp.Dispose();
+                cleanHoughBmp = null;
+            }
+            if (bakedHoughBmp != null)
+            {
+                bakedHoughBmp.Dispose();
+                bakedHoughBmp = null;
+            }
             if (pBitmap != null)
             {
                 pictureBox1.Image = null;
-                pBitmap.Dispose();
+                if (pBitmap != cleanHoughBmp && pBitmap != bakedHoughBmp)
+                {
+                    pBitmap.Dispose();
+                }
                 pBitmap = null;
             }
             base.OnFormClosed(e);
             DIPSample mainForm = this.MdiParent as DIPSample;
             if (mainForm != null) mainForm.UpdateHistogram();
+        }
+
+        private void InitializeHoughPanel()
+        {
+            panelBottomBg = new Panel
+            {
+                Height = 45,
+                Dock = DockStyle.Bottom,
+                BackColor = SystemColors.Control,
+                Padding = new Padding(5)
+            };
+
+            panelControlsContainer = new Panel
+            {
+                Size = new Size(425, 40),
+                BackColor = Color.Transparent
+            };
+
+            radioBgRed = new RadioButton
+            {
+                Text = "紅色",
+                Location = new Point(0, 8),
+                Size = new Size(55, 24)
+            };
+            radioBgRed.CheckedChanged += RadioHoughColor_CheckedChanged;
+
+            radioBgBlack = new RadioButton
+            {
+                Text = "黑色",
+                Location = new Point(55, 8),
+                Size = new Size(55, 24)
+            };
+            radioBgBlack.CheckedChanged += RadioHoughColor_CheckedChanged;
+
+            radioBgWhite = new RadioButton
+            {
+                Text = "白色",
+                Location = new Point(110, 8),
+                Size = new Size(55, 24)
+            };
+            radioBgWhite.CheckedChanged += RadioHoughColor_CheckedChanged;
+
+            radioBgCustom = new RadioButton
+            {
+                Text = "自訂",
+                Location = new Point(165, 8),
+                Size = new Size(55, 24)
+            };
+            radioBgCustom.CheckedChanged += RadioHoughColor_CheckedChanged;
+
+            panelCustomColorPreview = new Panel
+            {
+                Location = new Point(220, 11),
+                Size = new Size(18, 18),
+                BackColor = customBgColor,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            panelCustomColorPreview.Click += PanelCustomHoughColorPreview_Click;
+
+            chkBlendBg = new CheckBox
+            {
+                Text = "融入原始影像",
+                Location = new Point(250, 8),
+                Size = new Size(110, 24),
+                Checked = true
+            };
+            chkBlendBg.CheckedChanged += ChkBlendHough_CheckedChanged;
+
+            panelControlsContainer.Controls.AddRange(new Control[] {
+                radioBgRed, radioBgBlack, radioBgWhite,
+                radioBgCustom, panelCustomColorPreview, chkBlendBg
+            });
+
+            panelBottomBg.Controls.Add(panelControlsContainer);
+
+            panelBottomBg.SizeChanged += (s, e) => {
+                panelControlsContainer.Left = (panelBottomBg.Width - panelControlsContainer.Width) / 2;
+                panelControlsContainer.Top = (panelBottomBg.Height - panelControlsContainer.Height) / 2;
+            };
+
+            panelControlsContainer.Left = (panelBottomBg.Width - panelControlsContainer.Width) / 2;
+            panelControlsContainer.Top = (panelBottomBg.Height - panelControlsContainer.Height) / 2;
+
+            this.Controls.Add(panelBottomBg);
+            panelBottomBg.BringToFront();
+        }
+
+        private void ApplyInitialHoughSettings()
+        {
+            customBgColor = initialCustomColor;
+            panelCustomColorPreview.BackColor = customBgColor;
+            chkBlendBg.Checked = initialBlend;
+
+            if (initialBgType == "Red") radioBgRed.Checked = true;
+            else if (initialBgType == "Black") radioBgBlack.Checked = true;
+            else if (initialBgType == "White") radioBgWhite.Checked = true;
+            else if (initialBgType == "Custom") radioBgCustom.Checked = true;
+        }
+
+        private void RadioHoughColor_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateHoughRendering();
+        }
+
+        private void PanelCustomHoughColorPreview_Click(object sender, EventArgs e)
+        {
+            radioBgCustom.Checked = true;
+            ChooseCustomHoughColor();
+        }
+
+        private void ChooseCustomHoughColor()
+        {
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.Color = customBgColor;
+                if (cd.ShowDialog() == DialogResult.OK)
+                {
+                    customBgColor = cd.Color;
+                    RotateImageForm.lastCustomBgColor = cd.Color; // Share color history
+                    panelCustomColorPreview.BackColor = customBgColor;
+                    UpdateHoughRendering();
+                }
+            }
+        }
+
+        private void ChkBlendHough_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateHoughRendering();
+        }
+
+        private void UpdateHoughRendering()
+        {
+            if (cleanHoughBmp == null) return;
+
+            bool showLines = chkBlendBg.Checked;
+
+            Color lineCol = Color.Red;
+            if (radioBgBlack.Checked) lineCol = Color.Black;
+            else if (radioBgWhite.Checked) lineCol = Color.White;
+            else if (radioBgRed.Checked) lineCol = Color.Red;
+            else if (radioBgCustom.Checked) lineCol = customBgColor;
+
+            DIPSample mainForm = this.MdiParent as DIPSample;
+            if (mainForm != null)
+            {
+                int w = cleanHoughBmp.Width;
+                int h = cleanHoughBmp.Height;
+                int d = 0;
+                PixelFormat pf = new PixelFormat();
+                ColorPalette pal = null;
+
+                int[] fArray = mainForm.dyn_bmp2array(cleanHoughBmp, ref d, ref pf, ref pal);
+                int[] gArray = new int[w * h * d];
+
+                unsafe
+                {
+                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
+                    {
+                        if (isHoughCircle)
+                        {
+                            DIPSample.detect_circles_hough(f0, w, h, d, g0, houghRMin, houghRMax, houghThreshold, lineCol.R, lineCol.G, lineCol.B);
+                        }
+                        else
+                        {
+                            DIPSample.detect_lines_hough(f0, w, h, d, g0, houghThreshold, lineCol.R, lineCol.G, lineCol.B);
+                        }
+                    }
+                }
+
+                if (bakedHoughBmp != null) bakedHoughBmp.Dispose();
+                bakedHoughBmp = DIPSample.dyn_array2bmp(gArray, w, h, d, pf, pal);
+
+                if (pBitmap != cleanHoughBmp && pBitmap != bakedHoughBmp && pBitmap != null)
+                {
+                    pBitmap.Dispose();
+                }
+
+                if (showLines)
+                {
+                    pBitmap = (Bitmap)bakedHoughBmp.Clone();
+                }
+                else
+                {
+                    pBitmap = (Bitmap)cleanHoughBmp.Clone();
+                }
+
+                pictureBox1.Image = bakedHoughBmp;
+            }
+
+            DIPSample mainApp = this.MdiParent as DIPSample;
+            if (mainApp != null) mainApp.UpdateHistogram();
         }
     }
 }

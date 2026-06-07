@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 namespace DIP
 {
-    public class HoughLineForm : Form
+    public class HoughCircleForm : Form
     {
         private DIPSample mainForm;
         private Bitmap originalBmp;
@@ -15,6 +15,14 @@ namespace DIP
 
         private PictureBox pictureBox1;
         private Panel panelBottom;
+
+        private TrackBar trackBarRMin;
+        private Label lblRMinTitle;
+        private Label lblRMinValue;
+
+        private TrackBar trackBarRMax;
+        private Label lblRMaxTitle;
+        private Label lblRMaxValue;
 
         private TrackBar trackBarThreshold;
         private Label lblThresholdTitle;
@@ -45,12 +53,12 @@ namespace DIP
             get { return (this.IsDisposed || this.Disposing) ? null : processedBmp; }
         }
 
-        public HoughLineForm(DIPSample mainForm, Bitmap originalBmp)
+        public HoughCircleForm(DIPSample mainForm, Bitmap originalBmp)
         {
             this.mainForm = mainForm;
             this.originalBmp = originalBmp;
 
-            // Set default color based on format: grayscale default is Red, color default is Black
+            // Default color: Red for grayscale, Black for color
             this.customLineColor = (originalBmp.PixelFormat == PixelFormat.Format8bppIndexed) ? Color.Red : Color.Black;
 
             InitializeUI();
@@ -59,7 +67,7 @@ namespace DIP
 
         private void InitializeUI()
         {
-            this.Text = "霍夫直線偵測預覽";
+            this.Text = "霍夫圓形偵測預覽";
 
             int W = originalBmp.Width;
             int H = originalBmp.Height;
@@ -81,10 +89,10 @@ namespace DIP
             }
 
             int initialWidth = Math.Max(previewW, 540);
-            int initialHeight = previewH + 180; // Panel height is 180 to avoid clipping
+            int initialHeight = previewH + 225; // Compacted bottom panel height
 
             this.ClientSize = new Size(initialWidth, initialHeight);
-            this.MinimumSize = new Size(540, 220);
+            this.MinimumSize = new Size(540, 260);
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -103,17 +111,79 @@ namespace DIP
             // 2. Bottom Panel
             panelBottom = new Panel
             {
-                Height = 180,
+                Height = 225,
                 Dock = DockStyle.Bottom,
                 BackColor = SystemColors.Control,
                 Padding = new Padding(10)
             };
 
-            // 3. Threshold Title & TrackBar & Value Label
+            // 3. RMin Title & TrackBar & Label (Y = 10)
+            lblRMinTitle = new Label
+            {
+                Text = "最小半徑 (Min Radius):",
+                Location = new Point(15, 10),
+                Size = new Size(150, 20),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            trackBarRMin = new TrackBar
+            {
+                Minimum = 2,
+                Maximum = 100,
+                Value = 51, // Centered
+                Location = new Point(170, 5),
+                Width = 220,
+                TickStyle = TickStyle.None
+            };
+            trackBarRMin.ValueChanged += TrackBarRMin_ValueChanged;
+
+            lblRMinValue = new Label
+            {
+                Text = "51",
+                Location = new Point(400, 10),
+                Size = new Size(40, 20),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.RoyalBlue,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            // 4. RMax Title & TrackBar & Label (Y = 45)
+            lblRMaxTitle = new Label
+            {
+                Text = "最大半徑 (Max Radius):",
+                Location = new Point(15, 45),
+                Size = new Size(150, 20),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            trackBarRMax = new TrackBar
+            {
+                Minimum = 2,
+                Maximum = 200,
+                Value = 101, // Centered
+                Location = new Point(170, 40),
+                Width = 220,
+                TickStyle = TickStyle.None
+            };
+            trackBarRMax.ValueChanged += TrackBarRMax_ValueChanged;
+
+            lblRMaxValue = new Label
+            {
+                Text = "101",
+                Location = new Point(400, 45),
+                Size = new Size(40, 20),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.RoyalBlue,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            // 5. Threshold Title & TrackBar & Label (Y = 80)
             lblThresholdTitle = new Label
             {
                 Text = "累加器門檻 (Threshold):",
-                Location = new Point(15, 15),
+                Location = new Point(15, 80),
                 Size = new Size(150, 20),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -122,9 +192,9 @@ namespace DIP
             trackBarThreshold = new TrackBar
             {
                 Minimum = 10,
-                Maximum = 290,
-                Value = 150, // Center position (10 + 290) / 2 = 150
-                Location = new Point(170, 10),
+                Maximum = 90,
+                Value = 50, // Centered
+                Location = new Point(170, 75),
                 Width = 220,
                 TickStyle = TickStyle.None
             };
@@ -132,19 +202,19 @@ namespace DIP
 
             lblThresholdValue = new Label
             {
-                Text = "150",
-                Location = new Point(400, 15),
+                Text = "50",
+                Location = new Point(400, 80),
                 Size = new Size(40, 20),
                 Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 ForeColor = Color.RoyalBlue,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            // 4. Line Color Controls
+            // 6. Line Color Controls (Y = 115)
             lblLineColorCaption = new Label
             {
                 Text = "線條顏色 (Line Color):",
-                Location = new Point(15, 55),
+                Location = new Point(15, 115),
                 Size = new Size(150, 20),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -152,7 +222,7 @@ namespace DIP
 
             panelLineColorGroup = new Panel
             {
-                Location = new Point(170, 52),
+                Location = new Point(170, 112),
                 Size = new Size(340, 28),
                 BackColor = Color.Transparent
             };
@@ -204,11 +274,11 @@ namespace DIP
                 radioLineRed, radioLineBlack, radioLineWhite, radioLineCustom, panelCustomColorPreview
             });
 
-            // 5. Output Option Controls
+            // 7. Output Option Controls (Y = 150)
             lblOutputOptionCaption = new Label
             {
                 Text = "輸出選項 (Output):",
-                Location = new Point(15, 95),
+                Location = new Point(15, 150),
                 Size = new Size(150, 20),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -216,7 +286,7 @@ namespace DIP
 
             panelOutputGroup = new Panel
             {
-                Location = new Point(170, 92),
+                Location = new Point(170, 147),
                 Size = new Size(340, 28),
                 BackColor = Color.Transparent
             };
@@ -240,22 +310,22 @@ namespace DIP
 
             panelOutputGroup.Controls.AddRange(new Control[] { radioBlend, radioOverlay });
 
-            // 6. Reset Button
+            // 8. Reset Button (Y = 185)
             btnReset = new Button
             {
                 Text = "重置預設值",
-                Location = new Point(15, 135),
+                Location = new Point(15, 185),
                 Size = new Size(110, 28),
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 UseVisualStyleBackColor = true
             };
             btnReset.Click += BtnReset_Click;
 
-            // 7. OK and Cancel Buttons
+            // 9. OK and Cancel Buttons (Y = 185)
             btnOK = new Button
             {
                 Text = "確定",
-                Location = new Point(310, 135),
+                Location = new Point(310, 185),
                 Size = new Size(80, 28),
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 UseVisualStyleBackColor = true
@@ -265,7 +335,7 @@ namespace DIP
             btnCancel = new Button
             {
                 Text = "取消",
-                Location = new Point(400, 135),
+                Location = new Point(400, 185),
                 Size = new Size(80, 28),
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 UseVisualStyleBackColor = true
@@ -274,6 +344,8 @@ namespace DIP
 
             // Add all controls to Panel
             panelBottom.Controls.AddRange(new Control[] {
+                lblRMinTitle, trackBarRMin, lblRMinValue,
+                lblRMaxTitle, trackBarRMax, lblRMaxValue,
                 lblThresholdTitle, trackBarThreshold, lblThresholdValue,
                 lblLineColorCaption, panelLineColorGroup,
                 lblOutputOptionCaption, panelOutputGroup,
@@ -328,6 +400,26 @@ namespace DIP
             pictureBox1.ContextMenuStrip = imageContextMenu;
         }
 
+        private void TrackBarRMin_ValueChanged(object sender, EventArgs e)
+        {
+            if (trackBarRMin.Value > trackBarRMax.Value)
+            {
+                trackBarRMax.Value = trackBarRMin.Value;
+            }
+            lblRMinValue.Text = trackBarRMin.Value.ToString();
+            UpdateImage();
+        }
+
+        private void TrackBarRMax_ValueChanged(object sender, EventArgs e)
+        {
+            if (trackBarRMax.Value < trackBarRMin.Value)
+            {
+                trackBarRMin.Value = trackBarRMax.Value;
+            }
+            lblRMaxValue.Text = trackBarRMax.Value.ToString();
+            UpdateImage();
+        }
+
         private void TrackBarThreshold_ValueChanged(object sender, EventArgs e)
         {
             int threshVal = trackBarThreshold.Value;
@@ -362,7 +454,9 @@ namespace DIP
 
         private void BtnReset_Click(object sender, EventArgs e)
         {
-            trackBarThreshold.Value = 150;
+            trackBarRMin.Value = 51;
+            trackBarRMax.Value = 101;
+            trackBarThreshold.Value = 50;
             radioLineRed.Checked = (originalBmp.PixelFormat == PixelFormat.Format8bppIndexed);
             radioLineBlack.Checked = (originalBmp.PixelFormat != PixelFormat.Format8bppIndexed);
             radioLineWhite.Checked = false;
@@ -393,7 +487,7 @@ namespace DIP
                     gr.DrawImage(originalBmp, 0, 0);
                 }
 
-                string title = string.Format("霍夫直線 (Threshold={0})", trackBarThreshold.Value);
+                string title = string.Format("霍夫圓形 (R:{0}-{1}, Threshold={2})", trackBarRMin.Value, trackBarRMax.Value, trackBarThreshold.Value);
 
                 MSForm childForm = new MSForm();
                 childForm.MdiParent = mainForm;
@@ -402,12 +496,14 @@ namespace DIP
 
                 // Pass variables to MSForm for interactive Hough rendering
                 childForm.isHoughOutput = true;
-                childForm.isHoughCircle = false;
+                childForm.isHoughCircle = true;
+                childForm.houghRMin = trackBarRMin.Value;
+                childForm.houghRMax = trackBarRMax.Value;
                 childForm.houghThreshold = trackBarThreshold.Value;
                 childForm.cleanHoughBmp = cleanBmp;
                 childForm.bakedHoughBmp = (Bitmap)processedBmp.Clone();
                 childForm.initialBlend = radioBlend.Checked;
-                
+
                 // Set initial color type
                 if (radioLineRed.Checked) childForm.initialBgType = "Red";
                 else if (radioLineBlack.Checked) childForm.initialBgType = "Black";
@@ -456,6 +552,8 @@ namespace DIP
             int[] fArray = mainForm.dyn_bmp2array(workingBmp, ref d, ref pf, ref pal);
             int[] gArray = new int[w * h * d];
 
+            int rMin = trackBarRMin.Value;
+            int rMax = trackBarRMax.Value;
             int T = trackBarThreshold.Value;
             Color lineCol = GetSelectedColor();
 
@@ -463,7 +561,7 @@ namespace DIP
             {
                 fixed (int* f0 = fArray) fixed (int* g0 = gArray)
                 {
-                    DIPSample.detect_lines_hough(f0, w, h, d, g0, T, lineCol.R, lineCol.G, lineCol.B);
+                    DIPSample.detect_circles_hough(f0, w, h, d, g0, rMin, rMax, T, lineCol.R, lineCol.G, lineCol.B);
                 }
             }
 
@@ -472,19 +570,10 @@ namespace DIP
 
             if (pf1 != null)
             {
-                pf1.Text = string.Format("霍夫直線偵測調整: Threshold={0}", T);
+                pf1.Text = string.Format("霍夫圓形偵測調整: R={0}-{1}, Threshold={2}", rMin, rMax, T);
             }
 
-            // Preview always draws the line
-            if (radioBlend.Checked)
-            {
-                pictureBox1.Image = processedBmp;
-            }
-            else
-            {
-                // In overlay mode, we show the processed preview, but output will be clean
-                pictureBox1.Image = processedBmp;
-            }
+            pictureBox1.Image = processedBmp;
             mainForm.UpdateHistogram();
 
             if (tempCreated) workingBmp.Dispose();

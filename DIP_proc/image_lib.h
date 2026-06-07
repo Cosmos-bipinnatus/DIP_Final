@@ -24,6 +24,6 @@ extern "C" {
     __declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g, double *kernel, int kSize, double divisor, double offset);
     __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g);
     __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g, double lowThresh, double highThresh);
-    __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d, int *g, int houghThreshold);
-    __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d, int *g, int rMin, int rMax, int houghThreshold);
+    __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d, int *g, int houghThreshold, int lineR, int lineG, int lineB);
+    __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d, int *g, int rMin, int rMax, int houghThreshold, int lineR, int lineG, int lineB);
 }

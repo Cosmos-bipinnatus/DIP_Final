@@ -50,10 +50,10 @@ namespace DIP
         public static unsafe extern void detect_canny(int* f, int w, int h, int d, int* g, double lowThresh, double highThresh);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void detect_lines_hough(int* f, int w, int h, int d, int* g, int houghThreshold);
+        public static unsafe extern void detect_lines_hough(int* f, int w, int h, int d, int* g, int houghThreshold, int lineR, int lineG, int lineB);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static unsafe extern void detect_circles_hough(int* f, int w, int h, int d, int* g, int rMin, int rMax, int houghThreshold);
+        public static unsafe extern void detect_circles_hough(int* f, int w, int h, int d, int* g, int rMin, int rMax, int houghThreshold, int lineR, int lineG, int lineB);
 
         // ==========================================
         // Sidebar UI Elements and State variables
@@ -185,14 +185,17 @@ namespace DIP
                 ToolStripMenuItem btnLap = new ToolStripMenuItem("拉普拉斯濾波 (8-Neighbors)");
                 btnLap.Click += (s, e) => ApplyFilter(2);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnLap);
+                BindTooltip(btnLap, "利用 8 鄰域拉普拉斯算子對影像進行高頻細節增強與銳化處理。");
 
                 ToolStripMenuItem btnLog = new ToolStripMenuItem("高斯-拉普拉斯 (LoG)");
                 btnLog.Click += (s, e) => ApplyFilter(3);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnLog);
+                BindTooltip(btnLog, "結合高斯平滑與拉普拉斯二階微分，先抑噪再精確提取二階邊緣極值。");
 
                 ToolStripMenuItem btnHB = new ToolStripMenuItem("反銳化遮罩 / 高提升 (Unsharp Masking / High-Boost)");
                 btnHB.Click += (s, e) => ApplyFilter(4);
                 this.neighborhoodProcessingToolStripMenuItem.DropDownItems.Add(btnHB);
+                BindTooltip(btnHB, "高提升濾波，透過原圖減去模糊影像生成細節遮罩，可按權重疊加回原圖以調整銳化強度。");
             }
 
             // Dynamically add Sobel and Canny to Edge Detection menu
@@ -201,18 +204,23 @@ namespace DIP
                 ToolStripMenuItem btnSobel = new ToolStripMenuItem("Sobel 算子 (Sobel Operator)");
                 btnSobel.Click += (s, e) => ApplyEdge(0);
                 this.edgeDetectionToolStripMenuItem.DropDownItems.Add(btnSobel);
+                BindTooltip(btnSobel, "使用 3x3 Sobel 算子進行一階微分，計算 X 與 Y 方向的亮度差以獲取邊緣強度。");
 
                 ToolStripMenuItem btnCanny = new ToolStripMenuItem("Canny 邊緣偵測 (Canny Edge Detector)");
                 btnCanny.Click += (s, e) => ApplyEdge(1);
                 this.edgeDetectionToolStripMenuItem.DropDownItems.Add(btnCanny);
+                BindTooltip(btnCanny, "高精度邊緣偵測，包含高斯濾波抑噪、計算梯度、非極大值抑制與雙閾值遲滯邊緣連接。");
             }
 
             // Dynamically create a new top-level menu for Hough Line/Circle Detection!
             ToolStripMenuItem houghMenu = new ToolStripMenuItem("霍夫偵測 (Hough Detection)");
             ToolStripMenuItem btnHoughLine = new ToolStripMenuItem("霍夫直線偵測 (Hough Line Detection)");
             btnHoughLine.Click += (s, e) => ApplyHoughLine();
+            BindTooltip(btnHoughLine, "使用累積空間的極坐標投票機制，從 8bpp Indexed 灰階影像的邊緣中檢測直線。");
+
             ToolStripMenuItem btnHoughCircle = new ToolStripMenuItem("霍夫圓形偵測 (Hough Circle Detection)");
             btnHoughCircle.Click += (s, e) => ApplyHoughCircle();
+            BindTooltip(btnHoughCircle, "使用梯度向量輔助的 3D 累積投票與局部最大值抑制，從 8bpp Indexed 灰階影像中檢測圓形輪廓。");
 
             houghMenu.DropDownItems.Add(btnHoughLine);
             houghMenu.DropDownItems.Add(btnHoughCircle);
@@ -236,7 +244,10 @@ namespace DIP
             customToolTip.AutoPopDelay = 32767; // set max delay
 
             // Bind tooltips for sub-menus
+            BindTooltip(this.openToolStripMenuItem, "載入 JPEG、BMP 或 PNG 格式的影像檔案至工作區中。");
             BindTooltip(this.rGBtoGrayToolStripMenuItem, "採用 BT.601 標準公式 (Y = 0.299*R + 0.587*G + 0.114*B) 將 BGR 彩色影像轉換為單通道亮度灰階影像。");
+            BindTooltip(this.averagingFilterToolStripMenuItem, "空間低通濾波器，利用鄰域均值模糊影像，可平滑細小雜訊但會使邊緣稍微朦朧。");
+            BindTooltip(this.gaussianFiltersToolStripMenuItem, "空間低通濾波器，採用高斯加權權重模板，進行更自然的影像平滑防噪處理。");
             BindTooltip(this.bitPlanesToolStripMenuItem, "將 8 位元灰階影像拆解為 8 個獨立的二進位位元平面，高位元平面包含主要結構，低位元平面包含細微雜訊。");
             BindTooltip(this.showHistogramToolStripMenuItem, "切換顯示側邊欄統計圖表，即時呈現影像中藍、綠、紅或灰階通道的像素亮度分佈與均值、中位數、標準差。");
             BindTooltip(this.histogramEqualizationLinearToolStripMenuItem, "計算累積機率分佈函數 (CDF) 以自動拉伸灰階範圍，顯著提升低對比影像的整體亮暗細節。");
@@ -513,6 +524,14 @@ namespace DIP
             else if (activeChild is CannyForm cannyForm)
             {
                 bmp = cannyForm.ProcessedBitmap;
+            }
+            else if (activeChild is HoughLineForm hlForm)
+            {
+                bmp = hlForm.ProcessedBitmap;
+            }
+            else if (activeChild is HoughCircleForm hcForm)
+            {
+                bmp = hcForm.ProcessedBitmap;
             }
 
             if (bmp == null)
@@ -1201,10 +1220,15 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            if (!IsImageActuallyGrayscale(activeChild.pBitmap))
+            int d = 0;
+            PixelFormat pf = new PixelFormat();
+            ColorPalette pal = null;
+            dyn_bmp2array(activeChild.pBitmap, ref d, ref pf, ref pal);
+
+            if (d != 1)
             {
                 MessageBox.Show(
-                    "霍夫直線偵測功能僅支援單通道灰階影像！\n請先使用 [RGB 轉灰階] 功能將影像轉換後再進行操作。",
+                    "此功能僅支援標準 8-bit 灰階影像 (8bpp Indexed)！\n請載入或使用標準 8-bit 灰階影像進行操作。",
                     "不支援的影像格式 (Format Error)",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
@@ -1223,29 +1247,26 @@ namespace DIP
             MSForm activeChild = this.ActiveMdiChild as MSForm;
             if (activeChild == null) return;
 
-            int rMin, rMax, thresh;
-            if (ParamDialog.ShowHoughCircleDialog(out rMin, out rMax, out thresh))
+            int d = 0;
+            PixelFormat pf = new PixelFormat();
+            ColorPalette pal = null;
+            dyn_bmp2array(activeChild.pBitmap, ref d, ref pf, ref pal);
+
+            if (d != 1)
             {
-                Bitmap bmp = activeChild.pBitmap;
-                int tempW = bmp.Width;
-                int tempH = bmp.Height;
-                int d = 0;
-                PixelFormat pf = new PixelFormat();
-                ColorPalette pal = null;
-                int[] fArray = dyn_bmp2array(bmp, ref d, ref pf, ref pal);
-                int[] gArray = new int[tempW * tempH * d];
-
-                unsafe
-                {
-                    fixed (int* f0 = fArray) fixed (int* g0 = gArray)
-                    {
-                        detect_circles_hough(f0, tempW, tempH, d, g0, rMin, rMax, thresh);
-                    }
-                }
-
-                Bitmap newBmp = dyn_array2bmp(gArray, tempW, tempH, d, pf, pal);
-                ShowNewImage(newBmp, string.Format("霍夫圓形 (Hough Circles, R:{0}-{1}, T={2})", rMin, rMax, thresh));
+                MessageBox.Show(
+                    "此功能僅支援標準 8-bit 灰階影像 (8bpp Indexed)！\n請載入或使用標準 8-bit 灰階影像進行操作。",
+                    "不支援的影像格式 (Format Error)",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
             }
+
+            HoughCircleForm hcForm = new HoughCircleForm(this, activeChild.pBitmap);
+            hcForm.pf1 = this.stStripLabel;
+            hcForm.MdiParent = this;
+            hcForm.Show();
         }
     }
 }

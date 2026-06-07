@@ -115,6 +115,9 @@
     <Compile Include="HoughLineForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="HoughCircleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="DIPSample.resx">

@@ -3,6 +3,63 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
+#include <algorithm>
+
+// Hough Circle Help Structures and Functions
+struct DetectedCircle {
+  int a;
+  int b;
+  int r;
+  int votes;
+};
+
+inline bool compareCircles(const DetectedCircle &c1, const DetectedCircle &c2) {
+  return c1.votes > c2.votes;
+}
+
+inline void draw_color_pixel(int *g, int w, int h, int d, int x, int y, int r, int g_val, int b) {
+  if (x >= 0 && x < w && y >= 0 && y < h) {
+    if (d == 1) {
+      g[y * w + x] = (r * 299 + g_val * 587 + b * 114) / 1000;
+    } else {
+      int idx = (y * w + x) * d;
+      g[idx + 0] = b;
+      g[idx + 1] = g_val;
+      g[idx + 2] = r;
+    }
+  }
+}
+
+inline void draw_circle(int *g, int w, int h, int d, int xc, int yc, int r, int lineR, int lineG, int lineB) {
+  int x = 0;
+  int y = r;
+  int p = 1 - r;
+
+  auto draw_symmetric_pixels = [&](int x_offset, int y_offset) {
+    draw_color_pixel(g, w, h, d, xc + x_offset, yc + y_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc - x_offset, yc + y_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc + x_offset, yc - y_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc - x_offset, yc - y_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc + y_offset, yc + x_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc - y_offset, yc + x_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc + y_offset, yc - x_offset, lineR, lineG, lineB);
+    draw_color_pixel(g, w, h, d, xc - y_offset, yc - x_offset, lineR, lineG, lineB);
+  };
+
+  draw_symmetric_pixels(x, y);
+
+  while (x < y) {
+    x++;
+    if (p < 0) {
+      p += 2 * x + 1;
+    } else {
+      y--;
+      p += 2 * (x - y) + 1;
+    }
+    draw_symmetric_pixels(x, y);
+  }
+}
 
 extern "C" {
 
@@ -315,7 +372,8 @@ __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
 }
 
 __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
-                                              int *g, int houghThreshold) {
+                                              int *g, int houghThreshold,
+                                              int lineR, int lineG, int lineB) {
   if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0) {
     return;
   }
@@ -397,7 +455,7 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
     g[i] = f[i];
   }
 
-  // 4. Peak Detection and Red Lines Overlay
+  // 4. Peak Detection and Overlay with Custom Line Color
   for (int theta = 0; theta < num_theta; theta++) {
     for (int r = 0; r < num_rho; r++) {
       int votes = accumulator[theta * num_rho + r];
@@ -445,14 +503,7 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
               double y_val = (rho_val - x * cos_t) / sin_t;
               int y = (int)(y_val + (y_val >= 0 ? 0.5 : -0.5));
               if (y >= 0 && y < h) {
-                if (d == 1) {
-                  g[y * w + x] = 255;
-                } else {
-                  int idx = (y * w + x) * d;
-                  g[idx + 0] = 0;   // Blue
-                  g[idx + 1] = 0;   // Green
-                  g[idx + 2] = 255; // Red
-                }
+                draw_color_pixel(g, w, h, d, x, y, lineR, lineG, lineB);
               }
             }
           } else {
@@ -460,14 +511,7 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
               double x_val = (rho_val - y * sin_t) / cos_t;
               int x = (int)(x_val + (x_val >= 0 ? 0.5 : -0.5));
               if (x >= 0 && x < w) {
-                if (d == 1) {
-                  g[y * w + x] = 255;
-                } else {
-                  int idx = (y * w + x) * d;
-                  g[idx + 0] = 0;   // Blue
-                  g[idx + 1] = 0;   // Green
-                  g[idx + 2] = 255; // Red
-                }
+                draw_color_pixel(g, w, h, d, x, y, lineR, lineG, lineB);
               }
             }
           }
@@ -485,14 +529,205 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
 
 __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d,
                                                 int *g, int rMin, int rMax,
-                                                int houghThreshold) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
-  DIPPROC_UNUSED(rMin);
-  DIPPROC_UNUSED(rMax);
-  DIPPROC_UNUSED(houghThreshold);
+                                                int houghThreshold,
+                                                int lineR, int lineG, int lineB) {
+  if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0 || rMin < 0 || rMax < rMin) {
+    return;
+  }
+
+  int total_pixels = w * h;
+  unsigned char *gray = new unsigned char[total_pixels];
+
+  // 1. Convert to grayscale
+  for (int i = 0; i < total_pixels; i++) {
+    if (d == 1) {
+      int v = f[i];
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      gray[i] = (unsigned char)v;
+    } else {
+      int idx = i * d;
+      double b = f[idx + 0];
+      double gval = f[idx + 1];
+      double r = f[idx + 2];
+      int gray_val = (int)(r * 0.299 + gval * 0.587 + b * 0.114 + 0.5);
+      if (gray_val < 0) gray_val = 0;
+      if (gray_val > 255) gray_val = 255;
+      gray[i] = (unsigned char)gray_val;
+    }
+  }
+
+  // 2. Sobel Edge & Gradient Computation
+  unsigned char *edges = new unsigned char[total_pixels];
+  memset(edges, 0, total_pixels);
+  int *dx_grad = new int[total_pixels];
+  int *dy_grad = new int[total_pixels];
+  memset(dx_grad, 0, total_pixels * sizeof(int));
+  memset(dy_grad, 0, total_pixels * sizeof(int));
+
+  for (int y = 1; y < h - 1; y++) {
+    for (int x = 1; x < w - 1; x++) {
+      int idx = y * w + x;
+      int gx = -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)] -
+               2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)] -
+               gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+
+      int gy = -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] -
+               gray[(y - 1) * w + (x + 1)] + gray[(y + 1) * w + (x - 1)] +
+               2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+
+      dx_grad[idx] = gx;
+      dy_grad[idx] = gy;
+      int mag = abs(gx) + abs(gy);
+      if (mag > 100) {
+        edges[idx] = 255;
+      }
+    }
+  }
+
+  // 3. Initialize 3D Accumulator
+  int rRange = rMax - rMin + 1;
+  int *accumulator = new int[rRange * h * w];
+  memset(accumulator, 0, rRange * h * w * sizeof(int));
+
+  // 4. Gradient-assisted Voting
+  for (int y = 1; y < h - 1; y++) {
+    for (int x = 1; x < w - 1; x++) {
+      int idx = y * w + x;
+      if (edges[idx] == 255) {
+        int gx = dx_grad[idx];
+        int gy = dy_grad[idx];
+        if (gx == 0 && gy == 0) continue;
+
+        double len = std::sqrt((double)(gx * gx + gy * gy));
+        if (len == 0.0) continue;
+
+        double ux = gx / len;
+        double uy = gy / len;
+
+        // 3 directions: 0 deg, +10 deg, -10 deg
+        // cos(10 deg) = 0.98480775, sin(10 deg) = 0.17364817
+        const double c10 = 0.98480775;
+        const double s10 = 0.17364817;
+
+        double dirs[3][2] = {
+          { ux, uy },
+          { ux * c10 - uy * s10, ux * s10 + uy * c10 },
+          { ux * c10 + uy * s10, -ux * s10 + uy * c10 }
+        };
+
+        for (int d_idx = 0; d_idx < 3; d_idx++) {
+          double dx_dir = dirs[d_idx][0];
+          double dy_dir = dirs[d_idx][1];
+
+          for (int r = rMin; r <= rMax; r++) {
+            int rIdx = r - rMin;
+
+            // Direction 1
+            int a1 = (int)(x + r * dx_dir + (dx_dir >= 0 ? 0.5 : -0.5));
+            int b1 = (int)(y + r * dy_dir + (dy_dir >= 0 ? 0.5 : -0.5));
+            if (a1 >= 0 && a1 < w && b1 >= 0 && b1 < h) {
+              accumulator[rIdx * h * w + b1 * w + a1]++;
+            }
+
+            // Direction 2 (Opposite)
+            int a2 = (int)(x - r * dx_dir + (-dx_dir >= 0 ? 0.5 : -0.5));
+            int b2 = (int)(y - r * dy_dir + (-dy_dir >= 0 ? 0.5 : -0.5));
+            if (a2 >= 0 && a2 < w && b2 >= 0 && b2 < h) {
+              accumulator[rIdx * h * w + b2 * w + a2]++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 5. Peak Detection (3D Local Maxima)
+  std::vector<DetectedCircle> candidates;
+  for (int r = rMin; r <= rMax; r++) {
+    int rIdx = r - rMin;
+    for (int y = 2; y < h - 2; y++) {
+      for (int x = 2; x < w - 2; x++) {
+        int accIdx = rIdx * h * w + y * w + x;
+        int votes = accumulator[accIdx];
+        if (votes >= houghThreshold) {
+          bool is_local_max = true;
+          for (int dr = -1; dr <= 1; dr++) {
+            int nrIdx = rIdx + dr;
+            if (nrIdx < 0 || nrIdx >= rRange) continue;
+
+            for (int dy = -2; dy <= 2; dy++) {
+              for (int dx = -2; dx <= 2; dx++) {
+                if (dr == 0 && dy == 0 && dx == 0) continue;
+
+                int neighbor_votes = accumulator[nrIdx * h * w + (y + dy) * w + (x + dx)];
+                if (neighbor_votes > votes) {
+                  is_local_max = false;
+                  break;
+                }
+                if (neighbor_votes == votes) {
+                  // Break tie by coordinates
+                  if (nrIdx < rIdx || (nrIdx == rIdx && (y + dy) < y) ||
+                      (nrIdx == rIdx && (y + dy) == y && (x + dx) < x)) {
+                    is_local_max = false;
+                    break;
+                  }
+                }
+              }
+              if (!is_local_max) break;
+            }
+            if (!is_local_max) break;
+          }
+
+          if (is_local_max) {
+            DetectedCircle circle;
+            circle.a = x;
+            circle.b = y;
+            circle.r = r;
+            circle.votes = votes;
+            candidates.push_back(circle);
+          }
+        }
+      }
+    }
+  }
+
+  // 6. Circle Suppression (Filter close overlapping circles)
+  std::sort(candidates.begin(), candidates.end(), compareCircles);
+  std::vector<DetectedCircle> final_circles;
+
+  for (const auto &cand : candidates) {
+    bool keep = true;
+    for (const auto &kept : final_circles) {
+      double dist = sqrt((double)((cand.a - kept.a) * (cand.a - kept.a) +
+                                  (cand.b - kept.b) * (cand.b - kept.b)));
+      int max_r = (cand.r > kept.r) ? cand.r : kept.r;
+      if (dist < max_r * 0.5 && abs(cand.r - kept.r) < 15) {
+        keep = false;
+        break;
+      }
+    }
+    if (keep) {
+      final_circles.push_back(cand);
+    }
+  }
+
+  // 7. Copy original input f to output g
+  int total_elements = total_pixels * d;
+  for (int i = 0; i < total_elements; i++) {
+    g[i] = f[i];
+  }
+
+  // 8. Draw detected circles with custom color
+  for (const auto &circle : final_circles) {
+    draw_circle(g, w, h, d, circle.a, circle.b, circle.r, lineR, lineG, lineB);
+  }
+
+  // 9. Cleanup
+  delete[] gray;
+  delete[] edges;
+  delete[] dx_grad;
+  delete[] dy_grad;
+  delete[] accumulator;
 }
 }
