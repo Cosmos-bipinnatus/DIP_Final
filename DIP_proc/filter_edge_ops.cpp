@@ -1,8 +1,8 @@
 #include "pch.h"
+#include "image_lib.h"
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include "image_lib.h"
 
 extern "C" {
 
@@ -21,11 +21,95 @@ __declspec(dllexport) void spatial_filter(int *f, int w, int h, int d, int *g,
 }
 
 __declspec(dllexport) void detect_sobel(int *f, int w, int h, int d, int *g) {
-  DIPPROC_UNUSED(f);
-  DIPPROC_UNUSED(w);
-  DIPPROC_UNUSED(h);
-  DIPPROC_UNUSED(d);
-  DIPPROC_UNUSED(g);
+  if (f == nullptr || g == nullptr || w <= 0 || h <= 0 || d <= 0) {
+    return;
+  }
+
+  int total_pixels = w * h;
+  unsigned char *gray = new unsigned char[total_pixels];
+
+  // Convert to grayscale if needed
+  for (int i = 0; i < total_pixels; i++) {
+    if (d == 1) {
+      int v = f[i];
+      if (v < 0)
+        v = 0;
+      if (v > 255)
+        v = 255;
+      gray[i] = (unsigned char)v;
+    } else {
+      int idx = i * d;
+      double b = f[idx + 0];
+      double gval = f[idx + 1];
+      double r = f[idx + 2];
+      int gray_val = (int)(r * 0.299 + gval * 0.587 + b * 0.114 + 0.5);
+      if (gray_val < 0)
+        gray_val = 0;
+      if (gray_val > 255)
+        gray_val = 255;
+      gray[i] = (unsigned char)gray_val;
+    }
+  }
+
+
+  // Sobel operator (simple magnitude = |gx| + |gy|)
+  for (int y = 1; y < h - 1; y++) {
+    for (int x = 1; x < w - 1; x++) {
+      int idx = y * w + x;
+      int gx = -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)] -
+               2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)] -
+               gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+
+      int gy = -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] -
+               gray[(y - 1) * w + (x + 1)] + gray[(y + 1) * w + (x - 1)] +
+               2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+
+      int mag = abs(gx) + abs(gy);
+      if (mag > 255)
+        mag = 255;
+      if (mag < 0)
+        mag = 0;
+
+      if (d == 1) {
+        g[idx] = mag;
+      } else {
+        int outIdx = idx * d;
+        g[outIdx + 0] = mag; // B
+        g[outIdx + 1] = mag; // G
+        g[outIdx + 2] = mag; // R
+      }
+    }
+  }
+
+  // Handle borders (set to 0)
+  for (int x = 0; x < w; x++) {
+    int top = 0 * w + x;
+    int bottom = (h - 1) * w + x;
+    if (d == 1) {
+      g[top] = 0;
+      g[bottom] = 0;
+    } else {
+      int tIdx = top * d;
+      int bIdx = bottom * d;
+      g[tIdx + 0] = g[tIdx + 1] = g[tIdx + 2] = 0;
+      g[bIdx + 0] = g[bIdx + 1] = g[bIdx + 2] = 0;
+    }
+  }
+  for (int y = 0; y < h; y++) {
+    int left = y * w + 0;
+    int right = y * w + (w - 1);
+    if (d == 1) {
+      g[left] = 0;
+      g[right] = 0;
+    } else {
+      int lIdx = left * d;
+      int rIdx = right * d;
+      g[lIdx + 0] = g[lIdx + 1] = g[lIdx + 2] = 0;
+      g[rIdx + 0] = g[rIdx + 1] = g[rIdx + 2] = 0;
+    }
+  }
+
+  delete[] gray;
 }
 
 __declspec(dllexport) void detect_canny(int *f, int w, int h, int d, int *g,
@@ -56,8 +140,10 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
       double g_val = f[idx + 1];
       double r = f[idx + 2];
       int gray_val = (int)(r * 0.299 + g_val * 0.587 + b * 0.114 + 0.5);
-      if (gray_val < 0) gray_val = 0;
-      if (gray_val > 255) gray_val = 255;
+      if (gray_val < 0)
+        gray_val = 0;
+      if (gray_val > 255)
+        gray_val = 255;
       gray[i] = (unsigned char)gray_val;
     }
   }
@@ -68,12 +154,13 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
 
   for (int y = 1; y < h - 1; y++) {
     for (int x = 1; x < w - 1; x++) {
-      int gx = -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)]
-               - 2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)]
-               - gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+      int gx = -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)] -
+               2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)] -
+               gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
 
-      int gy = -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] - gray[(y - 1) * w + (x + 1)]
-               + gray[(y + 1) * w + (x - 1)] + 2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+      int gy = -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] -
+               gray[(y - 1) * w + (x + 1)] + gray[(y + 1) * w + (x - 1)] +
+               2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
 
       int mag = abs(gx) + abs(gy);
       if (mag > 100) {
@@ -127,7 +214,8 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
         bool is_local_max = true;
         for (int dt = -2; dt <= 2; dt++) {
           for (int dr = -2; dr <= 2; dr++) {
-            if (dt == 0 && dr == 0) continue;
+            if (dt == 0 && dr == 0)
+              continue;
 
             int neighbor_theta = theta + dt;
             int neighbor_r = r + dr;
@@ -144,14 +232,16 @@ __declspec(dllexport) void detect_lines_hough(int *f, int w, int h, int d,
                 break;
               }
               if (accumulator[neighbor_theta * num_rho + neighbor_r] == votes) {
-                if (neighbor_theta < theta || (neighbor_theta == theta && neighbor_r < r)) {
+                if (neighbor_theta < theta ||
+                    (neighbor_theta == theta && neighbor_r < r)) {
                   is_local_max = false;
                   break;
                 }
               }
             }
           }
-          if (!is_local_max) break;
+          if (!is_local_max)
+            break;
         }
 
         if (is_local_max) {
@@ -214,5 +304,4 @@ __declspec(dllexport) void detect_circles_hough(int *f, int w, int h, int d,
   DIPPROC_UNUSED(rMax);
   DIPPROC_UNUSED(houghThreshold);
 }
-
 }
