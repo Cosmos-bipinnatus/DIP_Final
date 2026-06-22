@@ -15,7 +15,7 @@ __declspec(dllexport) void adjust_brightness_contrast(int *f, int w, int h,
   if (alpha >= 0.0) {
     // Linear brightness & contrast adjustment
     for (int i = 0; i < 256; i++) {
-      double val = alpha * (double)i + (double)beta;
+      double val = alpha * (double)(i - 128) + 128.0 + (double)beta;
       int rounded_val = (int)(val + (val >= 0.0 ? 0.5 : -0.5));
       if (rounded_val < 0)
         rounded_val = 0;

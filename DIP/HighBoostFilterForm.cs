@@ -35,7 +35,7 @@ namespace DIP
         {
             get
             {
-                double A = (double)trackBarA.Value / 10.0;
+                double A = GetAValue();
                 return string.Format("[即時預覽調整中]\n提升係數 (A): {0:F1}", A);
             }
         }
@@ -93,9 +93,9 @@ namespace DIP
             // 3. Slider controls for Coefficient A
             lblATitle = new Label
             {
-                Text = "提升係數 A (Scale A, 1.0 ~ 3.0):",
+                Text = "提升係數 A (Scale A, 1.0 ~ 100.0):",
                 Location = new Point(15, 20),
-                Size = new Size(185, 20),
+                Size = new Size(220, 20),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -103,9 +103,9 @@ namespace DIP
             trackBarA = new TrackBar
             {
                 Minimum = 10,
-                Maximum = 30,
+                Maximum = 127,
                 Value = 12, // Default A = 1.2
-                Location = new Point(205, 15),
+                Location = new Point(240, 15),
                 Width = 220,
                 TickStyle = TickStyle.None
             };
@@ -114,8 +114,8 @@ namespace DIP
             lblAValue = new Label
             {
                 Text = "1.2",
-                Location = new Point(435, 20),
-                Size = new Size(40, 20),
+                Location = new Point(470, 20),
+                Size = new Size(60, 20),
                 Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 ForeColor = Color.RoyalBlue,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -206,10 +206,23 @@ namespace DIP
             pictureBox1.ContextMenuStrip = imageContextMenu;
         }
 
+        private double GetAValue()
+        {
+            int val = trackBarA.Value;
+            if (val <= 30)
+            {
+                return (double)val / 10.0;
+            }
+            else
+            {
+                return 3.0 + (double)(val - 30);
+            }
+        }
+
         private void TrackBarA_ValueChanged(object sender, EventArgs e)
         {
             if (isUpdating) return;
-            double A = (double)trackBarA.Value / 10.0;
+            double A = GetAValue();
             lblAValue.Text = A.ToString("F1");
             UpdateImage();
         }
@@ -233,7 +246,7 @@ namespace DIP
         {
             if (processedBmp != null)
             {
-                double A = (double)trackBarA.Value / 10.0;
+                double A = GetAValue();
                 string title = string.Format("高提升濾波 (High-Boost, A={0:F1})", A);
                 Bitmap outputBmp = processedBmp.Clone(new Rectangle(0, 0, processedBmp.Width, processedBmp.Height), processedBmp.PixelFormat);
                 string paramText = string.Format("套用演算法: 高提升濾波 (High-boost Filter)\n提升係數 (A): {0:F1}", A);
@@ -260,7 +273,7 @@ namespace DIP
             int[] fArray = mainForm.dyn_bmp2array(originalBmp, ref d, ref pf, ref pal);
             int[] gArray = new int[w * h * d];
 
-            double A = (double)trackBarA.Value / 10.0;
+            double A = GetAValue();
             double center = 8.0 + (A - 1.0) * 9.0;
             double[] kernel = new double[] { -1, -1, -1, -1, center, -1, -1, -1, -1 };
             int kSize = 3;

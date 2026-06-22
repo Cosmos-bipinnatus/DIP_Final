@@ -58,7 +58,7 @@ namespace DIP
             }
             else
             {
-                return 1.0 + 2.0 * ((val - 100) / 100.0);
+                return 1.0 + 9.0 * ((val - 100) / 100.0);
             }
         }
 
@@ -67,13 +67,13 @@ namespace DIP
             int val = trackBarGamma.Value;
             if (val <= 100)
             {
-                // 0->0.1, 100->1.0  (linear interpolation)
-                return 0.1 + 0.9 * (val / 100.0);
+                // 0->0.01, 100->1.0  (linear interpolation)
+                return 0.01 + 0.99 * (val / 100.0);
             }
             else
             {
-                // 100->1.0, 200->10.0  (linear interpolation)
-                return 1.0 + 9.0 * ((val - 100) / 100.0);
+                // 100->1.0, 200->100.0  (linear interpolation)
+                return 1.0 + 99.0 * ((val - 100) / 100.0);
             }
         }
 
@@ -306,7 +306,7 @@ namespace DIP
             {
                 Text = "1.0",
                 Location = new Point(355, 55),
-                Size = new Size(40, 20),
+                Size = new Size(60, 20),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.RoyalBlue,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -510,7 +510,7 @@ namespace DIP
 
         private void TranslateLinearToPoint(int mx, int my)
         {
-            // Translate the current line y=alpha*x+beta so it passes through the clicked (nx, ny)
+            // Translate the current line y=alpha*(x-128)+128+beta so it passes through the clicked (nx, ny)
             int w = picLinearCurve.Width;
             int h = picLinearCurve.Height;
             if (w <= 0 || h <= 0) return;
@@ -524,8 +524,8 @@ namespace DIP
             double alpha = GetAlphaValue();
             double inputVal = nx * 255.0;
             double outputVal = ny * 255.0;
-            // y = alpha * x + beta => beta = y - alpha * x
-            int beta = (int)Math.Round(outputVal - alpha * inputVal);
+            // y = alpha * (x - 128) + 128 + beta => beta = y - alpha * (x - 128) - 128
+            int beta = (int)Math.Round(outputVal - alpha * (inputVal - 128.0) - 128.0);
             beta = Math.Min(Math.Max(beta, -255), 255);
 
             if (isUpdatingControls) return;
@@ -552,9 +552,9 @@ namespace DIP
             // Adjust Alpha based on dx (sensitivity: full width = full alpha range)
             if (dx != 0)
             {
-                double alphaDelta = (2.9 / (double)w) * dx; // proportional to curve width
+                double alphaDelta = (9.9 / (double)w) * dx; // proportional to curve width
                 double currentAlpha = GetAlphaValue();
-                double newAlpha = Math.Min(Math.Max(currentAlpha + alphaDelta, 0.1), 3.0);
+                double newAlpha = Math.Min(Math.Max(currentAlpha + alphaDelta, 0.1), 10.0);
 
                 int alphaTrackVal;
                 if (newAlpha <= 1.0)
@@ -563,7 +563,7 @@ namespace DIP
                 }
                 else
                 {
-                    alphaTrackVal = 100 + (int)Math.Round((newAlpha - 1.0) / 2.0 * 100.0);
+                    alphaTrackVal = 100 + (int)Math.Round((newAlpha - 1.0) / 9.0 * 100.0);
                 }
                 alphaTrackVal = Math.Min(Math.Max(alphaTrackVal, 0), 200);
                 trackBarAlpha.Value = alphaTrackVal;
@@ -612,7 +612,7 @@ namespace DIP
             double ny = Math.Min(Math.Max(1.0 - (double)my / h, 0.05), 0.95);
 
             double gamma = Math.Log(ny) / Math.Log(nx);
-            gamma = Math.Min(Math.Max(gamma, 0.1), 10.0);
+            gamma = Math.Min(Math.Max(gamma, 0.01), 100.0);
 
             if (isUpdatingControls) return;
             isUpdatingControls = true;
@@ -621,11 +621,11 @@ namespace DIP
             int gammaTrackVal;
             if (gamma <= 1.0)
             {
-                gammaTrackVal = (int)Math.Round((gamma - 0.1) / 0.9 * 100.0);
+                gammaTrackVal = (int)Math.Round((gamma - 0.01) / 0.99 * 100.0);
             }
             else
             {
-                gammaTrackVal = 100 + (int)Math.Round((gamma - 1.0) / 9.0 * 100.0);
+                gammaTrackVal = 100 + (int)Math.Round((gamma - 1.0) / 99.0 * 100.0);
             }
             gammaTrackVal = Math.Min(Math.Max(gammaTrackVal, 0), 200);
 
@@ -651,16 +651,26 @@ namespace DIP
                 g.DrawLine(dashPen, 0, h - 1, w - 1, 0);
             }
 
-            // 2. Get current values
+            // 2. Draw black dashed crosshairs in the center (128, 128)
+            float cx = (float)(128.0 / 255.0 * (w - 1));
+            float cy = (float)((1.0 - 128.0 / 255.0) * (h - 1));
+            using (Pen crossPen = new Pen(Color.Black, 1))
+            {
+                crossPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                g.DrawLine(crossPen, cx, 0, cx, h - 1);
+                g.DrawLine(crossPen, 0, cy, w - 1, cy);
+            }
+
+            // 3. Get current values
             double alpha = GetAlphaValue();
             double beta = trackBarBeta.Value;
 
-            // 3. Draw active linear stretching line
+            // 4. Draw active linear stretching line
             PointF[] points = new PointF[w];
             for (int x = 0; x < w; x++)
             {
                 double normX = (double)x / (w - 1) * 255.0;
-                double normY = alpha * normX + beta;
+                double normY = alpha * (normX - 128.0) + 128.0 + beta;
                 if (normY < 0) normY = 0;
                 if (normY > 255) normY = 255;
 
